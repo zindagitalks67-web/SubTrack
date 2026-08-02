@@ -90,7 +90,8 @@ export function SubscriptionsView() {
 
       {/* Category chips — horizontally scrollable with edge fade */}
       <div className="relative mb-3">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth w-full pb-1">
+        {/* Added pr-10 so the last category item is fully visible and not blocked by fade */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth w-full pb-1 pr-10">
           <button
             onClick={() => setFilterCat('all')}
             className={`chip px-3 py-1.5 border transition-all shrink-0 whitespace-nowrap ${
