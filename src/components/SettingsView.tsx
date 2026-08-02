@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings, Crown, Sparkles, RotateCcw, User, Bell, Database, Info, Check, CreditCard, ShieldCheck } from 'lucide-react';
+import { Settings, Crown, Sparkles, RotateCcw, User, Bell, Database, Info, Check, CreditCard, ShieldCheck, Download } from 'lucide-react';
 import type { SubscriptionTier } from '@/types';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
@@ -24,7 +24,7 @@ export function SettingsView() {
     updateProfile({ name: nameInput.trim() || profile.name, email: emailInput.trim(), currency });
   };
 
-  const handleExport = () => {
+  const handleExportJSON = () => {
     const data = { subscriptions, profile, exportedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -35,11 +35,36 @@ export function SettingsView() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportCSV = () => {
+    if (subscriptions.length === 0) return;
+
+    // Header row for CSV
+    const headers = ['Subscription Name', 'Category', 'Price', 'Billing Cycle', 'Next Renewal Date', 'Status'];
+    
+    // Convert subscription items to CSV rows
+    const rows = subscriptions.map((s) => [
+      `"${s.name.replace(/"/g, '""')}"`,
+      `"${s.category}"`,
+      s.cost,
+      s.billingCycle,
+      s.nextRenewalDate,
+      s.active ? 'Active' : 'Paused'
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `subtrack-subscriptions-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleConfirmUpgrade = () => {
     if (!selectedTierForCheckout) return;
     setIsProcessing(true);
 
-    // Simulate payment checkout process delay
     setTimeout(() => {
       upgradeTier(selectedTierForCheckout);
       setIsProcessing(false);
@@ -119,7 +144,7 @@ export function SettingsView() {
         </div>
       </GlassCard>
 
-      {/* Reminder */}
+      {/* Renewal Reminder */}
       <GlassCard>
         <div className="flex items-center gap-2 mb-3">
           <Bell className="w-4 h-4 text-brand-blue" />
@@ -146,15 +171,19 @@ export function SettingsView() {
         )}
       </GlassCard>
 
-      {/* Data */}
+      {/* Data Export & Reset */}
       <GlassCard>
         <div className="flex items-center gap-2 mb-3">
           <Database className="w-4 h-4 text-brand-cyan" />
-          <h3 className="font-semibold text-content-primary text-sm">Data</h3>
+          <h3 className="font-semibold text-content-primary text-sm">Data & Export</h3>
         </div>
         <div className="space-y-2">
-          <button onClick={handleExport} className="btn-ghost w-full text-sm justify-start" disabled={profile.tier === 'free'}>
-            <Database className="w-4 h-4" /> Export data (JSON)
+          <button onClick={handleExportCSV} className="btn-ghost w-full text-sm justify-start" disabled={profile.tier === 'free'}>
+            <Download className="w-4 h-4 text-brand-cyan" /> Export as CSV (Excel)
+            {profile.tier === 'free' && <span className="ml-auto text-[11px] text-content-muted">Premium</span>}
+          </button>
+          <button onClick={handleExportJSON} className="btn-ghost w-full text-sm justify-start" disabled={profile.tier === 'free'}>
+            <Database className="w-4 h-4" /> Export Raw Backup (JSON)
             {profile.tier === 'free' && <span className="ml-auto text-[11px] text-content-muted">Premium</span>}
           </button>
           <button onClick={() => setResetOpen(true)} className="btn-danger w-full text-sm justify-start">
@@ -236,7 +265,7 @@ export function SettingsView() {
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-success shrink-0" />
-                <span>Advanced Analytics & Data Export</span>
+                <span>CSV & JSON Data Export</span>
               </div>
             </div>
 
