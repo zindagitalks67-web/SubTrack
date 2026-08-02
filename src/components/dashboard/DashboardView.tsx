@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { TrendingUp, Wallet, CalendarClock, Users, ArrowRight, TrendingDown } from 'lucide-react';
+import { TrendingUp, Wallet, CalendarClock, Users, ArrowRight, } from 'lucide-react';
 import type { ViewKey, Subscription } from '@/types';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
