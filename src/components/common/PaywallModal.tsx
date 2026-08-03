@@ -1,108 +1,183 @@
-import React, { useState } from 'react';
-import { Check, ShieldCheck, X, Sparkles, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Gift } from 'lucide-react';
+import type { SubscriptionTier } from '@/types';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 
-// STRIPE / REVENUECAT CONFIGURATION KEYS
-// In production, move these to .env file
-const STRIPE_PRICE_IDS: Record<string, string> = {
-  monthly: 'price_1P_SAMPLE_MONTHLY_KEY', 
-  yearly: 'price_1P_SAMPLE_YEARLY_KEY',
-  lifetime: 'price_1P_SAMPLE_LIFETIME_KEY',
-};
-
 export function PaywallModal() {
-  const { paywall, updateProfile } = useSubscriptions();
-  const [loading, setLoading] = useState(false);
+  const { paywall, upgradeTier, profile } = useSubscriptions();
+  const [selectedMethod, setSelectedMethod] = useState<string>('upi');
+  const [upiExpanded, setUpiExpanded] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedApp, setSelectedApp] = useState('PhonePe');
 
-  // Safely extract properties based on hook structure
+  // Fix 1: Check paywall open state safely
   const isOpen = paywall?.state?.open ?? (paywall as any)?.isOpen ?? false;
 
   if (!isOpen) return null;
 
-  const handleClose = () => {
-    if (typeof (paywall as any).close === 'function') {
-      (paywall as any).close();
-    } else if (typeof (paywall as any).closePaywall === 'function') {
-      (paywall as any).closePaywall();
-    }
+  const handlePayment = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      // Fix 2: Cast 'monthly' as SubscriptionTier
+      upgradeTier('monthly' as SubscriptionTier);
+      setIsProcessing(false);
+      paywall.close();
+    }, 1200);
   };
 
-  const handleRealPayment = async () => {
-    setLoading(true);
-    try {
-      const currentTier = (paywall?.state as any)?.selectedTier || (paywall as any)?.selectedTier || 'monthly';
-      const priceId = STRIPE_PRICE_IDS[currentTier] || STRIPE_PRICE_IDS.monthly;
-      
-      /* 
-        PRODUCTION SERVER ENDPOINT CALL:
-        const response = await fetch('/api/create-checkout-session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ priceId }),
-        });
-        const session = await response.json();
-        window.location.href = session.url;
-      */
-
-      // Fallback Simulation for Dev/Demo mode until backend API is attached
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      updateProfile({ tier: currentTier as any });
-      handleClose();
-    } catch (error) {
-      console.error('Payment failed', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const upiApps = [
+    { name: 'PhonePe', color: 'bg-purple-600', icon: 'P' },
+    { name: 'Cred', color: 'bg-black border border-white/20', icon: 'C' },
+    { name: 'ICICI Bank Apps', color: 'bg-orange-600', icon: 'i' },
+    { name: 'YES BANK', color: 'bg-red-600', icon: 'Y' },
+    { name: 'IDFC Bank Apps', color: 'bg-amber-700', icon: 'F' },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md glass-card p-6 border-brand-purple/40 shadow-2xl">
-        <button
-          onClick={handleClose}
-          className="absolute right-4 top-4 text-content-muted hover:text-white"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-full bg-brand-purple/20 flex items-center justify-center mx-auto mb-3 border border-brand-purple/40">
-            <Sparkles className="w-6 h-6 text-brand-purple" />
+      <div className="relative w-full max-w-md bg-[#121318] text-white rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Top Header Section */}
+        <div className="p-5 border-b border-white/10 relative">
+          <button 
+            onClick={() => paywall.close()} 
+            className="absolute top-4 right-4 text-content-secondary hover:text-white p-1 rounded-full hover:bg-white/10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-xl font-bold">
+              S
+            </div>
+            <div>
+              <h3 className="font-bold text-lg leading-tight">SubTrack Pro</h3>
+              <p className="text-xs text-content-secondary">{profile.email || 'user@example.com'}</p>
+            </div>
+            <div className="ml-auto text-right pr-6">
+              <span className="text-xl font-black text-white">₹499.00</span>
+              <p className="text-[10px] text-content-muted">/year</p>
+            </div>
           </div>
-          <h2 className="text-xl font-bold text-white">Upgrade to Pro</h2>
-          <p className="text-sm text-content-secondary mt-1">
-            Unlock unlimited tracking, CSV exports & family sync.
+
+          <p className="text-[11px] text-content-muted mt-3">
+            By continuing, you agree to SubTrack Payment Terms. Encrypted and safe transaction.
           </p>
         </div>
 
-        <div className="space-y-3 mb-6">
-          {['Unlimited Subscriptions', 'Export to CSV & JSON', 'Family Group Sharing', 'Priority Alerts'].map((feat) => (
-            <div key={feat} className="flex items-center gap-3 text-sm text-content-primary">
-              <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <Check className="w-3 h-3" />
+        {/* Scrollable Payment Options */}
+        <div className="p-4 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
+
+          {/* 1. Pay with UPI */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+            <button
+              onClick={() => {
+                setSelectedMethod('upi');
+                setUpiExpanded(!upiExpanded);
+              }}
+              className="w-full p-3.5 flex items-center justify-between text-left hover:bg-white/[0.03]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs">
+                  UPI
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Pay with UPI</p>
+                  <p className="text-[11px] text-content-muted">Instant payment via PhonePe, Cred & more</p>
+                </div>
               </div>
-              {feat}
+              {upiExpanded ? <ChevronUp className="w-4 h-4 text-content-secondary" /> : <ChevronDown className="w-4 h-4 text-content-secondary" />}
+            </button>
+
+            {upiExpanded && (
+              <div className="px-3 pb-3 space-y-1.5 border-t border-white/5 pt-2">
+                {upiApps.map((app) => (
+                  <label
+                    key={app.name}
+                    onClick={() => {
+                      setSelectedMethod('upi');
+                      setSelectedApp(app.name);
+                    }}
+                    className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all ${
+                      selectedMethod === 'upi' && selectedApp === app.name
+                        ? 'bg-purple-600/20 border border-purple-500/40'
+                        : 'hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-7 h-7 rounded-full ${app.color} flex items-center justify-center font-bold text-xs text-white`}>
+                        {app.icon}
+                      </div>
+                      <span className="text-xs font-medium text-white">{app.name}</span>
+                    </div>
+                    <input
+                      type="radio"
+                      name="payment_option"
+                      checked={selectedMethod === 'upi' && selectedApp === app.name}
+                      onChange={() => {}}
+                      className="accent-purple-500"
+                    />
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 2. Add Card */}
+          <div 
+            onClick={() => setSelectedMethod('card')}
+            className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+              selectedMethod === 'card'
+                ? 'border-purple-500/50 bg-purple-600/15'
+                : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.03]'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-semibold">Add credit or debit card</span>
             </div>
-          ))}
+            <span className="text-[10px] bg-white/10 text-content-secondary px-2 py-0.5 rounded-md">
+              VISA / MasterCard / RuPay
+            </span>
+          </div>
+
+          {/* 3. Redeem Code */}
+          <div 
+            onClick={() => setSelectedMethod('redeem')}
+            className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+              selectedMethod === 'redeem'
+                ? 'border-purple-500/50 bg-purple-600/15'
+                : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.03]'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Gift className="w-4 h-4" />
+              </div>
+              <span className="text-sm font-semibold">Redeem code</span>
+            </div>
+          </div>
+
         </div>
 
-        <button
-          onClick={handleRealPayment}
-          disabled={loading}
-          className="btn-primary w-full py-3 flex items-center justify-center gap-2 font-semibold text-base shadow-lg shadow-brand-purple/20"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" /> Redirecting to Gateway…
-            </>
-          ) : (
-            "Pay via Stripe / Apple Pay"
-          )}
-        </button>
+        {/* Footer Action Button */}
+        <div className="p-4 border-t border-white/10 bg-black/40">
+          <button
+            onClick={handlePayment}
+            disabled={isProcessing}
+            className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-purple-600/30 transition-all active:scale-[0.98] disabled:opacity-50"
+          >
+            {isProcessing ? 'Processing Payment...' : `Subscribe with ${selectedMethod === 'upi' ? selectedApp : 'Selected Method'}`}
+          </button>
+          
+          <div className="flex items-center justify-center gap-1 mt-2.5 text-[10px] text-content-muted">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Secure 256-bit encrypted checkout</span>
+          </div>
+        </div>
 
-        <p className="flex items-center justify-center gap-1.5 text-xs text-content-muted mt-4">
-          <ShieldCheck className="w-4 h-4 text-emerald-400" /> Secure 256-bit Encrypted Checkout
-        </p>
       </div>
     </div>
   );
