@@ -1,166 +1,159 @@
-import { useMemo, useState } from 'react';
-import { Plus, CreditCard, Search, SlidersHorizontal } from 'lucide-react';
-import type { Subscription } from '@/types';
+import { useState, useMemo } from 'react';
+import { Plus, Search, ArrowUpDown } from 'lucide-react';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
+import { SubscriptionCard } from '@/components/subscriptions/SubscriptionCard';
+import { SubscriptionForm } from '@/components/subscriptions/SubscriptionForm';
 import { EmptyState } from '@/components/common/EmptyState';
-import { SubscriptionCard } from './SubscriptionCard';
-import { SubscriptionForm } from './SubscriptionForm';
-import { CATEGORIES, FREE_TIER_LIMIT, TIER_LABELS } from '@/utils/constants';
+import { CATEGORIES } from '@/utils/constants';
+
+type SortOption = 'date' | 'cost-desc' | 'cost-asc' | 'name';
 
 export function SubscriptionsView() {
-  const { subscriptions, profile, activeCount, paywall } = useSubscriptions();
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Subscription | null>(null);
-  const [query, setQuery] = useState('');
-  const [filterCat, setFilterCat] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused'>('all');
+  const { subscriptions, paywall } = useSubscriptions();
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [sortBy, setSortBy] = useState<SortOption>('date');
 
-  const filtered = useMemo(() => {
+  // Filter & Sort Logic
+  const filteredSubscriptions = useMemo(() => {
     return subscriptions
-      .filter((s) => {
-        if (filterStatus === 'active' && !s.active) return false;
-        if (filterStatus === 'paused' && s.active) return false;
-        if (filterCat !== 'all' && s.category !== filterCat) return false;
-        if (query.trim()) {
-          const q = query.toLowerCase();
-          if (!s.name.toLowerCase().includes(q) && !s.category.toLowerCase().includes(q)) return false;
-        }
-        return true;
+      .filter((sub) => {
+        const matchesSearch = sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              sub.category.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = selectedCategory === 'All' || sub.category === selectedCategory;
+        return matchesSearch && matchesCategory;
       })
       .sort((a, b) => {
-        if (a.active !== b.active) return a.active ? -1 : 1;
+        if (sortBy === 'cost-desc') return b.cost - a.cost;
+        if (sortBy === 'cost-asc') return a.cost - b.cost;
+        if (sortBy === 'name') return a.name.localeCompare(b.name);
+        // Default: Next Renewal Date
         return new Date(a.nextRenewalDate).getTime() - new Date(b.nextRenewalDate).getTime();
       });
-  }, [subscriptions, query, filterCat, filterStatus]);
+  }, [subscriptions, searchQuery, selectedCategory, sortBy]);
 
-  const openAdd = () => {
-    setEditing(null);
-    setFormOpen(true);
+  const handleOpenAddModal = () => {
+    if (subscriptions.length >= 5) {
+      paywall.open('limit_reached' as any);
+    } else {
+      setIsAddOpen(true);
+    }
   };
-  const openEdit = (s: Subscription) => {
-    setEditing(s);
-    setFormOpen(true);
-  };
-
-  const isFree = profile.tier === 'free';
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in space-y-4">
       <Header
         title="Subscriptions"
-        subtitle={`${activeCount} active${isFree ? ` of ${FREE_TIER_LIMIT} (Free)` : ` · ${TIER_LABELS[profile.tier]}`}`}
-        icon={CreditCard}
+        subtitle={`Managing ${subscriptions.length} active services`}
         actions={
-          <button onClick={openAdd} className="btn-primary px-3 py-2 text-sm" aria-label="Add subscription">
+          <button onClick={handleOpenAddModal} className="btn-primary text-xs py-2 px-3">
             <Plus className="w-4 h-4" /> Add
           </button>
         }
       />
 
-      {/* Search + filter */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
-          <input
-            className="glass-input w-full pl-9 pr-3 py-2.5 text-sm"
-            placeholder="Search subscriptions…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+      {/* Search & Sort Controls */}
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          {/* Live Search Input */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-content-secondary" />
+            <input
+              type="text"
+              placeholder="Search subscriptions..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="glass-input w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-black/20 border border-white/10 text-white placeholder:text-content-muted"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-content-secondary hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="glass-input px-3 py-2 text-xs rounded-xl bg-[#121318] text-white cursor-pointer appearance-none pr-8 border border-white/10"
+            >
+              <option value="date">Next Renewal</option>
+              <option value="cost-desc">Price: High to Low</option>
+              <option value="cost-asc">Price: Low to High</option>
+              <option value="name">Name A-Z</option>
+            </select>
+            <ArrowUpDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-content-secondary pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Category Pills (Filter) */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          <button
+            onClick={() => setSelectedCategory('All')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
+              selectedCategory === 'All'
+                ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                : 'bg-white/[0.04] text-content-secondary hover:bg-white/[0.08]'
+            }`}
+          >
+            All ({subscriptions.length})
+          </button>
+          {CATEGORIES.map((cat: any) => {
+            const categoryName = typeof cat === 'string' ? cat : cat.name;
+            const count = subscriptions.filter((s) => s.category === categoryName).length;
+            if (count === 0) return null;
+            return (
+              <button
+                key={categoryName}
+                onClick={() => setSelectedCategory(categoryName)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
+                  selectedCategory === categoryName
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                    : 'bg-white/[0.04] text-content-secondary hover:bg-white/[0.08]'
+                }`}
+              >
+                {categoryName} ({count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Status chips */}
-      <div className="flex items-center gap-2 mb-3 overflow-x-auto no-scrollbar scroll-smooth w-full pb-1">
-        {(['all', 'active', 'paused'] as const).map((st) => (
-          <button
-            key={st}
-            onClick={() => setFilterStatus(st)}
-            className={`chip px-3 py-1.5 capitalize border transition-all shrink-0 whitespace-nowrap ${
-              filterStatus === st
-                ? 'border-brand-purple/60 bg-brand-gradient-soft text-content-primary'
-                : 'border-white/10 bg-white/[0.03] text-content-secondary'
-            }`}
-          >
-            {st}
-          </button>
-        ))}
-      </div>
-
-      {/* Category chips — horizontally scrollable with edge fade */}
-      <div className="relative mb-3">
-        {/* Added pr-10 so the last category item is fully visible and not blocked by fade */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth w-full pb-1 pr-10">
-          <button
-            onClick={() => setFilterCat('all')}
-            className={`chip px-3 py-1.5 border transition-all shrink-0 whitespace-nowrap ${
-              filterCat === 'all'
-                ? 'border-brand-purple/60 bg-brand-gradient-soft text-content-primary'
-                : 'border-white/10 bg-white/[0.03] text-content-secondary'
-            }`}
-          >
-            <SlidersHorizontal className="w-3 h-3" /> All
-          </button>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.name}
-              onClick={() => setFilterCat(c.name)}
-              className={`chip px-3 py-1.5 border transition-all shrink-0 whitespace-nowrap ${
-                filterCat === c.name
-                  ? 'border-transparent text-white'
-                  : 'border-white/10 bg-white/[0.03] text-content-secondary'
-              }`}
-              style={filterCat === c.name ? { backgroundColor: `${c.color}33`, borderColor: `${c.color}80` } : undefined}
-            >
-              {c.name}
-            </button>
+      {/* Subscriptions List / Empty State */}
+      {filteredSubscriptions.length > 0 ? (
+        <div className="space-y-2.5">
+          {filteredSubscriptions.map((sub) => (
+            <SubscriptionCard 
+              key={sub.id} 
+              subscription={sub} 
+              onEdit={() => {}}
+            />
           ))}
         </div>
-        {/* Right-edge fade gradient hinting more categories */}
-        <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-base to-transparent" />
-      </div>
-
-      {/* List */}
-      {filtered.length === 0 ? (
+      ) : (
         <EmptyState
-          icon={CreditCard}
-          title={subscriptions.length === 0 ? 'No subscriptions yet' : 'No matches'}
+          icon={Search}
+          title="No subscriptions found"
           description={
-            subscriptions.length === 0
-              ? 'Add your first subscription to start tracking your spend.'
-              : 'Try adjusting your search or filters.'
-          }
-          action={
-            subscriptions.length === 0 ? (
-              <button onClick={openAdd} className="btn-primary text-sm">
-                <Plus className="w-4 h-4" /> Add subscription
-              </button>
-            ) : undefined
+            searchQuery || selectedCategory !== 'All'
+              ? 'Try adjusting your search or filter criteria.'
+              : 'Add your first subscription to start tracking.'
           }
         />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {filtered.map((s) => (
-            <SubscriptionCard key={s.id} subscription={s} onEdit={openEdit} />
-          ))}
-        </div>
       )}
 
-      {/* Free tier banner */}
-      {isFree && activeCount >= FREE_TIER_LIMIT && (
-        <div className="glass-card p-4 mt-4 border-brand-purple/30 bg-brand-gradient-soft">
-          <p className="text-sm text-content-primary font-medium">You have reached the free limit.</p>
-          <p className="text-xs text-content-secondary mt-0.5">
-            Upgrade to add unlimited subscriptions and unlock family sharing.
-          </p>
-          <button onClick={() => paywall.open('limit')} className="btn-primary text-sm mt-3">
-            Upgrade now
-          </button>
-        </div>
-      )}
-
-      <SubscriptionForm open={formOpen} onClose={() => setFormOpen(false)} editing={editing} />
+      {/* Add Subscription Form Modal */}
+      <SubscriptionForm 
+        open={isAddOpen} 
+        onClose={() => setIsAddOpen(false)} 
+      />
     </div>
   );
 }
