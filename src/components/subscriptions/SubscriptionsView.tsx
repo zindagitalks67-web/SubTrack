@@ -33,6 +33,9 @@ export function SubscriptionsView() {
         return new Date(a.nextRenewalDate).getTime() - new Date(b.nextRenewalDate).getTime();
       });
   }, [subscriptions, searchQuery, selectedCategory, sortBy]);
+  <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 px-1 w-full max-w-full">
+  {/* Filter tabs/buttons */}
+</div>
 
   const handleOpenAddModal = () => {
     if (subscriptions.length >= 5) {
