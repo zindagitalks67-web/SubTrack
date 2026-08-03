@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { TrendingUp, Wallet, CalendarClock, Users, ArrowRight, } from 'lucide-react';
+import { TrendingUp, Wallet, CalendarClock, Users, ArrowRight } from 'lucide-react';
 import type { ViewKey, Subscription } from '@/types';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
@@ -8,11 +8,12 @@ import { GlassCard } from '@/components/common/GlassCard';
 import { CategoryIcon } from '@/components/common/CategoryIcon';
 import { CATEGORY_MAP, TIER_LABELS } from '@/utils/constants';
 import { daysUntil, formatDateShort } from '@/utils/dateHelpers';
+import { sharedSplit } from '@/utils/calculations';
 import {
+  fetchLiveExchangeRates,
   formatCurrency,
-  formatCompactCurrency,
-  sharedSplit,
-} from '@/utils/calculations';
+  type CurrencyCode,
+} from '@/utils/currency';
 
 interface DashboardViewProps {
   onNavigate: (v: ViewKey) => void;
@@ -22,6 +23,17 @@ interface DashboardViewProps {
 export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewProps) {
   const { monthly, annual, categories, forecast, activeCount, sharedCount, hikesCount, subscriptions, profile } =
     useSubscriptions();
+
+  const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
+
+  // Fetch live exchange rates on mount
+  useEffect(() => {
+    fetchLiveExchangeRates().then((rates) => {
+      if (rates) setLiveRates(rates);
+    });
+  }, []);
+
+  const targetCurrency = (profile.currency as CurrencyCode) || 'USD';
 
   const upcoming = useMemo(
     () =>
@@ -44,6 +56,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
   }, [subscriptions]);
 
   const forecastMax = Math.max(...forecast.map((f) => f.amount), 1);
+  
   const yourShareMonthly = useMemo(
     () =>
       subscriptions
@@ -66,16 +79,22 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         <div className="absolute -right-4 bottom-0 w-24 h-24 rounded-full bg-brand-cyan/30 blur-xl" />
         <div className="relative">
           <p className="text-xs text-white/70 font-medium uppercase tracking-wide">Monthly spend</p>
-          <p className="text-4xl font-bold text-white mt-1">{formatCurrency(monthly)}</p>
+          <p className="text-4xl font-bold text-white mt-1">
+            {formatCurrency(monthly, targetCurrency, liveRates)}
+          </p>
           <div className="flex items-center gap-4 mt-3">
             <div>
               <p className="text-[11px] text-white/60">Annual</p>
-              <p className="text-sm font-semibold text-white">{formatCompactCurrency(annual)}</p>
+              <p className="text-sm font-semibold text-white">
+                {formatCurrency(annual, targetCurrency, liveRates)}
+              </p>
             </div>
             <div className="h-8 w-px bg-white/20" />
             <div>
               <p className="text-[11px] text-white/60">Your share</p>
-              <p className="text-sm font-semibold text-white">{formatCurrency(yourShareMonthly)}</p>
+              <p className="text-sm font-semibold text-white">
+                {formatCurrency(yourShareMonthly, targetCurrency, liveRates)}
+              </p>
             </div>
           </div>
         </div>
@@ -111,12 +130,14 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
                       <Cell key={c.category} fill={c.color} />
                     ))}
                   </Pie>
-                  <Tooltip content={<DoughnutTooltip />} />
+                  <Tooltip content={<DoughnutTooltip currency={targetCurrency} rates={liveRates} />} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-[10px] text-content-muted">Total</span>
-                <span className="text-sm font-bold text-content-primary">{formatCompactCurrency(monthly)}</span>
+                <span className="text-sm font-bold text-content-primary">
+                  {formatCurrency(monthly, targetCurrency, liveRates)}
+                </span>
               </div>
             </div>
             <div className="flex-1 space-y-1.5 min-w-0">
@@ -124,7 +145,9 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
                 <div key={c.category} className="flex items-center gap-2 text-xs">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                   <span className="text-content-secondary truncate flex-1">{c.category}</span>
-                  <span className="text-content-primary font-medium">{formatCurrency(c.monthly)}</span>
+                  <span className="text-content-primary font-medium">
+                    {formatCurrency(c.monthly, targetCurrency, liveRates)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -142,11 +165,13 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
                 <div
                   className="w-full max-w-[34px] rounded-t-lg bg-gradient-to-t from-brand-blue/40 to-brand-purple/80 transition-all duration-500"
                   style={{ height: `${Math.max((f.amount / forecastMax) * 100, 6)}%`, animationDelay: `${i * 60}ms` }}
-                  title={`${f.month}: ${formatCurrency(f.amount)}`}
+                  title={`${f.month}: ${formatCurrency(f.amount, targetCurrency, liveRates)}`}
                 />
               </div>
               <span className="text-[10px] text-content-muted">{f.month}</span>
-              <span className="text-[10px] font-medium text-content-secondary">{formatCompactCurrency(f.amount)}</span>
+              <span className="text-[10px] font-medium text-content-secondary">
+                {formatCurrency(f.amount, targetCurrency, liveRates)}
+              </span>
             </div>
           ))}
         </div>
@@ -154,7 +179,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
 
       {/* Price hike highlight */}
       {topHike && (
-        <GlassCard onClick={() => onEditSubscription(topHike.s)} className="border-danger/30">
+        <GlassCard onClick={() => onEditSubscription(topHike.s)} className="border-danger/30 cursor-pointer">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-danger/15 flex items-center justify-center shrink-0">
               <TrendingUp className="w-5 h-5 text-danger" />
@@ -203,7 +228,9 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
                     <p className="text-xs text-content-secondary">{formatDateShort(s.nextRenewalDate)}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-semibold text-content-primary">{formatCurrency(s.cost)}</p>
+                    <p className="text-sm font-semibold text-content-primary">
+                      {formatCurrency(s.cost, targetCurrency, liveRates)}
+                    </p>
                     <p className={`text-[11px] ${urgent ? 'text-danger' : 'text-content-muted'}`}>
                       {days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'today' : `in ${days}d`}
                     </p>
@@ -240,13 +267,25 @@ function StatCard({
   );
 }
 
-function DoughnutTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { category: string; monthly: number } }> }) {
+function DoughnutTooltip({
+  active,
+  payload,
+  currency = 'USD',
+  rates,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: { category: string; monthly: number } }>;
+  currency?: CurrencyCode;
+  rates?: Record<string, number> | null;
+}) {
   if (!active || !payload || !payload.length) return null;
   const p = payload[0].payload;
   return (
     <div className="glass-card px-2.5 py-1.5 text-xs">
       <span className="text-content-secondary">{p.category}: </span>
-      <span className="text-content-primary font-medium">{formatCurrency(p.monthly)}/mo</span>
+      <span className="text-content-primary font-medium">
+        {formatCurrency(p.monthly, currency, rates)}/mo
+      </span>
     </div>
   );
 }
