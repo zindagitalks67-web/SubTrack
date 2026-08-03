@@ -1,13 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { TrendingUp, Wallet, CalendarClock, Users, ArrowRight } from 'lucide-react';
+import { TrendingUp, Wallet, CalendarClock, Users, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type { ViewKey, Subscription } from '@/types';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
 import { GlassCard } from '@/components/common/GlassCard';
 import { CategoryIcon } from '@/components/common/CategoryIcon';
 import { CATEGORY_MAP, TIER_LABELS } from '@/utils/constants';
-import { daysUntil, formatDateShort } from '@/utils/dateHelpers';
+import { daysUntil, formatDateShort, getNextRenewalDate } from '@/utils/dateHelpers';
 import { sharedSplit } from '@/utils/calculations';
 import {
   fetchLiveExchangeRates,
@@ -21,7 +21,7 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewProps) {
-  const { monthly, annual, categories, forecast, activeCount, sharedCount, hikesCount, subscriptions, profile } =
+  const { monthly, annual, categories, forecast, activeCount, sharedCount, hikesCount, subscriptions, profile, updateSubscription } =
     useSubscriptions();
 
   const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
@@ -34,6 +34,16 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
   }, []);
 
   const targetCurrency = (profile.currency as CurrencyCode) || 'USD';
+
+  // Urgent renewals (<= 3 days or past due)
+  const urgentRenewals = useMemo(() => {
+    const reminderDays = profile.reminderDays || 3;
+    return subscriptions
+      .filter((s) => s.active)
+      .map((s) => ({ s, days: daysUntil(s.nextRenewalDate) }))
+      .filter((item) => item.days <= reminderDays)
+      .sort((a, b) => a.days - b.days);
+  }, [subscriptions, profile.reminderDays]);
 
   const upcoming = useMemo(
     () =>
@@ -64,7 +74,16 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         .reduce((sum, s) => sum + sharedSplit(s).yourShare, 0),
     [subscriptions],
   );
-
+const handleMarkPaid = (s: Subscription) => {
+    const nextDate = getNextRenewalDate(s.nextRenewalDate, s.billingCycle);
+    (updateSubscription as any)(
+      {
+        ...s,
+        nextRenewalDate: nextDate,
+      },
+      s
+    );
+  };
   return (
     <div className="animate-fade-in space-y-4">
       <Header
@@ -72,6 +91,40 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         subtitle={`${TIER_LABELS[profile.tier]} plan · ${activeCount} active subscriptions`}
         icon={Wallet}
       />
+
+      {/* Urgent Renewals Alert Banner */}
+      {urgentRenewals.length > 0 && (
+        <div className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-red-500/15 border border-amber-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <h3 className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
+              Renewals Due Soon ({urgentRenewals.length})
+            </h3>
+          </div>
+          <div className="space-y-2">
+            {urgentRenewals.map(({ s, days }) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between gap-3 bg-black/20 p-2.5 rounded-xl border border-white/5"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-white truncate">{s.name}</p>
+                  <p className="text-[11px] text-amber-300/80">
+                    {formatCurrency(s.cost, targetCurrency, liveRates)} ·{' '}
+                    {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Due today' : `Due in ${days}d`}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleMarkPaid(s)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg transition-all"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Hero spend card */}
       <div className="relative overflow-hidden rounded-3xl p-5 bg-brand-gradient-strong shadow-glow">

@@ -15,6 +15,20 @@ export function formatDateShort(dateStr: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+export function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+export function formatRelative(dateStr: string): string {
+  const days = daysUntil(dateStr);
+  if (days < 0) return `${Math.abs(days)} days ago`;
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return `In ${days} days`;
+}
+
 export function getNextRenewalDate(currentDateStr: string, cycle: BillingCycle): string {
   const date = new Date(currentDateStr);
   if (isNaN(date.getTime())) return currentDateStr;
@@ -28,4 +42,17 @@ export function getNextRenewalDate(currentDateStr: string, cycle: BillingCycle):
   }
 
   return date.toISOString().slice(0, 10);
+}
+
+// Aliases & Utilities
+export const computeNextRenewal = getNextRenewalDate;
+
+export function toISODate(date: Date | string = new Date()): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+  return d.toISOString().slice(0, 10);
+}
+
+export function uid(): string {
+  return Math.random().toString(36).substring(2, 9);
 }
