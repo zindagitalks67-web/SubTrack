@@ -77,3 +77,14 @@ export interface ForecastPoint {
   monthKey: string;
   amount: number;
 }
+export interface SharedMember {
+  id: string;
+  name: string;
+  email?: string;
+  amount: number;
+  hasPaid: boolean;
+}
+
+// In your existing Subscription interface, ensure these fields are supported:
+// sharedWith?: SharedMember[];
+// isShared?: boolean;
