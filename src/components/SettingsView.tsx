@@ -1,11 +1,26 @@
 import { useState } from 'react';
-import { Settings, Crown, Sparkles, RotateCcw, User, Bell, Database, Info, Check, Download } from 'lucide-react';
+import {
+  Settings,
+  Crown,
+  Sparkles,
+  RotateCcw,
+  User,
+  Bell,
+  Database,
+  Info,
+  Check,
+  Download,
+  Globe,
+  Shield,
+  ChevronRight,
+} from 'lucide-react';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
 import { GlassCard } from '@/components/common/GlassCard';
 import { Modal } from '@/components/common/Modal';
 import { PLANS, TIER_LABELS } from '@/utils/constants';
-import { formatCurrency, totalAnnualSpend } from '@/utils/calculations';
+import { CURRENCIES, type CurrencyCode, formatCurrency as formatConverted } from '@/utils/currency';
+import { totalAnnualSpend } from '@/utils/calculations';
 
 export function SettingsView() {
   const { profile, updateProfile, resetData, subscriptions, paywall } = useSubscriptions();
@@ -13,12 +28,19 @@ export function SettingsView() {
 
   const [nameInput, setNameInput] = useState(profile.name);
   const [emailInput, setEmailInput] = useState(profile.email);
-  const [currency, setCurrency] = useState(profile.currency);
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>(
+    (profile.currency as CurrencyCode) || 'USD'
+  );
 
-  const annual = totalAnnualSpend(subscriptions);
+  const annualUSD = totalAnnualSpend(subscriptions);
 
   const handleSaveProfile = () => {
-    updateProfile({ name: nameInput.trim() || profile.name, email: emailInput.trim(), currency });
+    updateProfile({
+      name: nameInput.trim() || profile.name,
+      email: emailInput.trim(),
+      currency: selectedCurrency,
+    });
+    localStorage.setItem('preferred_currency', selectedCurrency);
   };
 
   const handleExportJSON = () => {
@@ -35,17 +57,14 @@ export function SettingsView() {
   const handleExportCSV = () => {
     if (subscriptions.length === 0) return;
 
-    // Header row for CSV
     const headers = ['Subscription Name', 'Category', 'Price', 'Billing Cycle', 'Next Renewal Date', 'Status'];
-    
-    // Convert subscription items to CSV rows
     const rows = subscriptions.map((s) => [
       `"${s.name.replace(/"/g, '""')}"`,
       `"${s.category}"`,
       s.cost,
       s.billingCycle,
       s.nextRenewalDate,
-      s.active ? 'Active' : 'Paused'
+      s.active ? 'Active' : 'Paused',
     ]);
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -60,7 +79,6 @@ export function SettingsView() {
 
   const handleOpenPaywall = () => {
     if (paywall && typeof paywall.open === 'function') {
-      // Passes 'settings' trigger which matches PaywallTrigger type
       paywall.open('settings' as any);
     }
   };
@@ -91,11 +109,11 @@ export function SettingsView() {
         )}
       </div>
 
-      {/* Profile */}
+      {/* Profile & Currency */}
       <GlassCard>
         <div className="flex items-center gap-2 mb-3">
           <User className="w-4 h-4 text-brand-purple" />
-          <h3 className="font-semibold text-content-primary text-sm">Profile</h3>
+          <h3 className="font-semibold text-content-primary text-sm">Profile & Display Preferences</h3>
         </div>
         <div className="space-y-3">
           <label className="block">
@@ -116,21 +134,24 @@ export function SettingsView() {
             />
           </label>
           <label className="block">
-            <span className="text-xs text-content-secondary mb-1.5 block">Currency</span>
-            <select
-              className="glass-input w-full px-3.5 py-2.5 text-sm"
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-            >
-              <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="GBP">GBP (£)</option>
-              <option value="CAD">CAD ($)</option>
-              <option value="AUD">AUD ($)</option>
-            </select>
+            <span className="text-xs text-content-secondary mb-1.5 block">Preferred Currency</span>
+            <div className="relative">
+              <select
+                className="glass-input w-full px-3.5 py-2.5 text-sm appearance-none bg-[#121318]"
+                value={selectedCurrency}
+                onChange={(e) => setSelectedCurrency(e.target.value as CurrencyCode)}
+              >
+                {Object.values(CURRENCIES).map((curr) => (
+                  <option key={curr.code} value={curr.code}>
+                    {curr.label}
+                  </option>
+                ))}
+              </select>
+              <Globe className="w-4 h-4 text-content-muted absolute right-3 top-3 pointer-events-none" />
+            </div>
           </label>
           <button onClick={handleSaveProfile} className="btn-primary w-full text-sm">
-            <Check className="w-4 h-4" /> Save profile
+            <Check className="w-4 h-4" /> Save Preferences
           </button>
         </div>
       </GlassCard>
@@ -139,7 +160,7 @@ export function SettingsView() {
       <GlassCard>
         <div className="flex items-center gap-2 mb-3">
           <Bell className="w-4 h-4 text-brand-blue" />
-          <h3 className="font-semibold text-content-primary text-sm">Renewal reminder</h3>
+          <h3 className="font-semibold text-content-primary text-sm">Renewal Reminder</h3>
         </div>
         <p className="text-xs text-content-secondary mb-2">How many days before a renewal should we alert you?</p>
         <div className="flex items-center gap-2">
@@ -182,7 +203,7 @@ export function SettingsView() {
           </button>
         </div>
         <p className="text-[11px] text-content-muted mt-2">
-          {subscriptions.length} subscriptions stored locally. Annual spend: {formatCurrency(annual, currency)}.
+          {subscriptions.length} subscriptions stored locally. Annual spend: {formatConverted(annualUSD, selectedCurrency)}.
         </p>
       </GlassCard>
 
