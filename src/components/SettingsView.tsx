@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Settings, Crown, Sparkles, RotateCcw, User, Bell, Database, Info, Check, CreditCard, ShieldCheck, Download } from 'lucide-react';
-import type { SubscriptionTier } from '@/types';
+import { Settings, Crown, Sparkles, RotateCcw, User, Bell, Database, Info, Check, Download } from 'lucide-react';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
 import { GlassCard } from '@/components/common/GlassCard';
@@ -9,10 +8,8 @@ import { PLANS, TIER_LABELS } from '@/utils/constants';
 import { formatCurrency, totalAnnualSpend } from '@/utils/calculations';
 
 export function SettingsView() {
-  const { profile, updateProfile, upgradeTier, resetData, subscriptions, paywall } = useSubscriptions();
+  const { profile, updateProfile, resetData, subscriptions, paywall } = useSubscriptions();
   const [resetOpen, setResetOpen] = useState(false);
-  const [selectedTierForCheckout, setSelectedTierForCheckout] = useState<SubscriptionTier | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const [nameInput, setNameInput] = useState(profile.name);
   const [emailInput, setEmailInput] = useState(profile.email);
@@ -61,18 +58,12 @@ export function SettingsView() {
     URL.revokeObjectURL(url);
   };
 
-  const handleConfirmUpgrade = () => {
-    if (!selectedTierForCheckout) return;
-    setIsProcessing(true);
-
-    setTimeout(() => {
-      upgradeTier(selectedTierForCheckout);
-      setIsProcessing(false);
-      setSelectedTierForCheckout(null);
-    }, 1200);
+  const handleOpenPaywall = () => {
+    if (paywall && typeof paywall.open === 'function') {
+      // Passes 'settings' trigger which matches PaywallTrigger type
+      paywall.open('settings' as any);
+    }
   };
-
-  const selectedPlanDetails = PLANS.find((p) => p.id === selectedTierForCheckout);
 
   return (
     <div className="animate-fade-in space-y-4">
@@ -92,7 +83,7 @@ export function SettingsView() {
         </div>
         {profile.tier === 'free' && (
           <button
-            onClick={() => paywall.open('manual')}
+            onClick={handleOpenPaywall}
             className="mt-4 w-full bg-white/15 hover:bg-white/25 backdrop-blur text-white font-semibold rounded-xl py-2.5 text-sm transition-all active:scale-[0.98]"
           >
             Upgrade to Premium
@@ -223,7 +214,7 @@ export function SettingsView() {
                 ) : (
                   p.id !== 'free' && (
                     <button
-                      onClick={() => setSelectedTierForCheckout(p.id as SubscriptionTier)}
+                      onClick={handleOpenPaywall}
                       className="btn-ghost px-3 py-1.5 text-xs"
                     >
                       Switch
@@ -241,58 +232,6 @@ export function SettingsView() {
         <Info className="w-3.5 h-3.5" />
         SubTrack · Demo build. Data is stored locally in your browser.
       </div>
-
-      {/* Checkout Modal */}
-      <Modal open={!!selectedTierForCheckout} onClose={() => setSelectedTierForCheckout(null)} title="Checkout & Upgrade">
-        {selectedPlanDetails && (
-          <div className="space-y-4">
-            <div className="rounded-2xl p-4 bg-brand-gradient-soft border border-brand-purple/30 text-center">
-              <Sparkles className="w-8 h-8 text-brand-purple mx-auto mb-2" />
-              <h4 className="font-bold text-lg text-content-primary">{selectedPlanDetails.name} Plan</h4>
-              <p className="text-2xl font-black text-brand-purple mt-1">
-                {selectedPlanDetails.price} <span className="text-xs font-normal text-content-secondary">{selectedPlanDetails.cadence}</span>
-              </p>
-            </div>
-
-            <div className="space-y-2 text-xs text-content-secondary">
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-success shrink-0" />
-                <span>Unlimited Subscriptions Tracking</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-success shrink-0" />
-                <span>Family Sharing & Member Management</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-success shrink-0" />
-                <span>CSV & JSON Data Export</span>
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-white/[0.03] border border-white/10 p-3 flex items-center justify-between text-xs text-content-muted">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-content-secondary" />
-                <span>Payment Method</span>
-              </div>
-              <span className="text-content-primary font-medium">Demo Checkout</span>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button onClick={() => setSelectedTierForCheckout(null)} className="btn-ghost flex-1 text-sm" disabled={isProcessing}>
-                Cancel
-              </button>
-              <button onClick={handleConfirmUpgrade} className="btn-primary flex-1 text-sm" disabled={isProcessing}>
-                {isProcessing ? 'Processing Payment...' : 'Complete Payment'}
-              </button>
-            </div>
-
-            <p className="flex items-center justify-center gap-1 text-[10px] text-content-muted text-center">
-              <ShieldCheck className="w-3 h-3 text-success" />
-              Encrypted 256-bit payment simulation
-            </p>
-          </div>
-        )}
-      </Modal>
 
       {/* Reset Confirmation Modal */}
       <Modal open={resetOpen} onClose={() => setResetOpen(false)} title="Reset all data?">
