@@ -8,7 +8,7 @@ export function exportToCSV(subscriptions: any[]) {
   csvContent += "Name,Category,Price,Billing Cycle,Renewal Date\r\n";
 
   subscriptions.forEach(sub => {
-    let row = `"${sub.name}","${sub.category}","${sub.price}","${sub.billingCycle}","${sub.renewalDate}"`;
+    const row = `"${sub.name}","${sub.category}","${sub.price}","${sub.billingCycle}","${sub.renewalDate}"`;
     csvContent += row + "\r\n";
   });
 
