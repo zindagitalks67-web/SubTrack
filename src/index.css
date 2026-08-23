@@ -2,83 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    color-scheme: dark;
-  }
-
-  * {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  html, body, #root {
-    min-height: 100%;
-  }
-
-  body {
-    @apply bg-[#0a0a0f] text-white font-sans antialiased;
-    background-image:
-      radial-gradient(60% 50% at 15% 0%, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0) 60%),
-      radial-gradient(50% 45% at 100% 10%, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 55%);
-    background-attachment: fixed;
-  }
-
-  ::selection {
-    @apply bg-brand-purple/40 text-white;
-  }
-
-  input, select, textarea {
-    @apply text-white;
-  }
+:root {
+  color-scheme: light !important;
 }
 
-@layer components {
-  .glass {
-    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08];
-  }
-
-  .glass-card {
-    @apply bg-white/[0.035] backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-card;
-  }
-
-  .glass-nav {
-    @apply bg-black/50 backdrop-blur-2xl border border-white/[0.08];
-  }
-
-  .glass-input {
-    @apply bg-white/[0.04] backdrop-blur-md border border-white/10 rounded-xl
-      text-white placeholder:text-gray-400
-      focus:outline-none focus:ring-2 focus:ring-brand-purple/50 focus:border-brand-purple/50
-      transition-all duration-200;
-  }
-
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl
-      bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold
-      px-4 py-2.5 shadow-lg hover:opacity-90 active:scale-[0.98]
-      transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed;
-  }
-
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl
-      bg-white/[0.05] border border-white/10 text-gray-300 font-medium
-      px-4 py-2.5 hover:bg-white/[0.09] active:scale-[0.98] transition-all duration-200;
-  }
-
-  .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
-  }
-
-  .nav-item {
-    @apply relative flex flex-col items-center justify-center gap-1 flex-1
-      py-2.5 text-gray-400 transition-colors duration-200;
-  }
+body {
+  background-color: #f3f4f6 !important;
+  color: #111827 !important;
 }
 
-@layer utilities {
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .safe-top { padding-top: env(safe-area-inset-top, 0px); }
-  .text-balance { text-wrap: balance; }
+h1, h2, h3, h4, h5, h6, p, span, label, div {
+  color: #111827 !important;
+}
+
+.glass, .glass-card, .glass-nav {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+/* 🛑 FINAL FIX: Input fields force black text on white background */
+input, select, textarea {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #000000 !important; /* Ye sabse important hai */
+  border: 1px solid #e5e7eb !important;
+}
+
+input::placeholder {
+  color: #9ca3af !important;
+  -webkit-text-fill-color: #9ca3af !important;
+}
+
+.btn-primary {
+  background: linear-gradient(to right, #7c3aed, #4f46e5) !important;
+  color: white !important;
 }
