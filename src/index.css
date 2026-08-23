@@ -139,3 +139,30 @@
     text-wrap: balance;
   }
 }
+/* Global Fix: Text aur Inputs ko Dark Color do */
+:root {
+  --content-primary: #111827; /* Dark Gray */
+  --content-secondary: #374151;
+  --content-muted: #6b7280;
+}
+
+/* Input fields ka text dark karo aur background white karo */
+input, select, textarea {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+}
+
+/* Form Labels aur Headings dark kar do */
+h1, h2, h3, h4, h5, h6, p, span, label, div {
+  color: var(--content-primary);
+}
+
+/* Glass Card ke andar ka text dark karo */
+.glass-card {
+  color: #111827;
+}
+
+/* Calendar aur Budget ke text bhi dark karo */
+.calendar-grid, .budget-card {
+  color: #111827;
+}
