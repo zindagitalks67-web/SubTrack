@@ -42,7 +42,7 @@ interface SubscriptionContextType {
   hikesCount: number;
   profile: {
     name: string;
-    email: string; // ✅ Email added
+    email: string;
     currency: string;
     reminderDays: number;
     tier: string;
@@ -74,7 +74,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     close: () => setPaywall(prev => ({ ...prev, isOpen: false })),
     upgradeTier: (tier: SubscriptionTier) => {
       setPaywall(prev => ({ ...prev, isPaid: true, isOpen: false }));
-      // Yahan real upgrade logic add karo (Supabase update)
     },
   });
 
@@ -136,16 +135,46 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [user]);
 
-  // ... Add/Update/Delete functions same as before ...
+  // ✅ FIX: Add Subscription (Column mapping sahi kiya)
   const addSubscription = async (sub: Omit<Subscription, 'id' | 'user_id'>) => {
     if (!user) throw new Error('User not authenticated');
-    const { data, error } = await supabase.from('subscriptions').insert([{ ...sub, user_id: user.id }]).select().single();
+
+    // Convert camelCase to snake_case for DB
+    const dbSub = {
+      name: sub.name,
+      price: sub.cost,                   // ✅ cost -> price
+      currency: sub.currency,
+      billing_cycle: sub.billingCycle,   // ✅ billingCycle -> billing_cycle
+      next_renewal: sub.nextRenewalDate, // ✅ nextRenewalDate -> next_renewal
+      category: sub.category,
+      notes: sub.notes || '',
+      active: sub.active,
+      shared_with: sub.shared ? [user.id] : [], // ✅ shared -> shared_with
+      price_history: sub.priceHistory || [],    // ✅ priceHistory -> price_history
+      user_id: user.id,
+    };
+
+    const { data, error } = await supabase.from('subscriptions').insert([dbSub]).select().single();
     if (error) throw error;
     if (data) setSubscriptions(prev => [data, ...prev]);
   };
 
+  // ✅ FIX: Update Subscription (Column mapping sahi kiya)
   const updateSubscription = async (id: string, updates: Partial<Subscription>) => {
-    const { data, error } = await supabase.from('subscriptions').update(updates).eq('id', id).select().single();
+    const dbUpdates: any = {};
+    if (updates.name) dbUpdates.name = updates.name;
+    if (updates.cost !== undefined) dbUpdates.price = updates.cost; // ✅
+    if (updates.currency) dbUpdates.currency = updates.currency;
+    if (updates.billingCycle) dbUpdates.billing_cycle = updates.billingCycle; // ✅
+    if (updates.nextRenewalDate !== undefined) dbUpdates.next_renewal = updates.nextRenewalDate; // ✅
+    if (updates.category) dbUpdates.category = updates.category;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.active !== undefined) dbUpdates.active = updates.active;
+    if (updates.shared !== undefined) dbUpdates.shared_with = updates.shared ? [user.id] : []; // ✅
+    if (updates.priceHistory) dbUpdates.price_history = updates.priceHistory; // ✅
+    dbUpdates.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabase.from('subscriptions').update(dbUpdates).eq('id', id).select().single();
     if (error) throw error;
     if (data) setSubscriptions(prev => prev.map(sub => sub.id === id ? data : sub));
   };
