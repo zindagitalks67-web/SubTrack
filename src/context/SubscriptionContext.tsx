@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import type { SubscriptionTier } from '@/types';
 
-// ✅ Subscription Interface
 export interface Subscription {
   id: string;
   name: string;
@@ -20,7 +19,6 @@ export interface Subscription {
   user_id?: string;
 }
 
-// ✅ Paywall State Interface
 export interface PaywallState {
   isOpen: boolean;
   isPaid: boolean;
@@ -29,7 +27,6 @@ export interface PaywallState {
   upgradeTier: (tier: SubscriptionTier) => void;
 }
 
-// ✅ Context Type
 interface SubscriptionContextType {
   subscriptions: Subscription[];
   loading: boolean;
@@ -47,9 +44,9 @@ interface SubscriptionContextType {
     reminderDays: number;
     tier: string;
   };
-  alerts: any[];
+  alerts: any[]; // ✅ Guaranteed array
   updateProfile: (updates: Partial<{ name: string; currency: string; reminderDays: number; tier: string }>) => void;
-  family: any[];
+  family: any[]; // ✅ Guaranteed array
   addFamilyMember: (member: any) => boolean;
   removeFamilyMember: (id: string) => void;
   paywall: PaywallState;
@@ -66,7 +63,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // ✅ Paywall State with methods
   const [paywall, setPaywall] = useState<PaywallState>({
     isOpen: false,
     isPaid: false,
@@ -77,7 +73,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     },
   });
 
-  // ✅ Profile with email
   const profile = useMemo(() => ({
     name: user?.user_metadata?.name || 'User',
     email: user?.email || 'user@example.com',
@@ -86,14 +81,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     tier: user?.user_metadata?.tier || 'free',
   }), [user]);
 
-  // Fetch subscriptions from Supabase
   const fetchSubscriptions = useCallback(async () => {
     if (!user) {
       setSubscriptions([]);
       setLoading(false);
       return;
     }
-
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -126,54 +119,45 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       localStorage.setItem('subscriptions', JSON.stringify(normalized));
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
-      const localData = localStorage.getItem('subscriptions');
-      if (localData) {
-        try { setSubscriptions(JSON.parse(localData)); } catch (e) { setSubscriptions([]); }
-      }
+      setSubscriptions([]); // ✅ Always set array on error
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  // ✅ FIX: Add Subscription (Column mapping sahi kiya)
   const addSubscription = async (sub: Omit<Subscription, 'id' | 'user_id'>) => {
     if (!user) throw new Error('User not authenticated');
-
-    // Convert camelCase to snake_case for DB
     const dbSub = {
       name: sub.name,
-      price: sub.cost,                   // ✅ cost -> price
+      price: sub.cost,
       currency: sub.currency,
-      billing_cycle: sub.billingCycle,   // ✅ billingCycle -> billing_cycle
-      next_renewal: sub.nextRenewalDate, // ✅ nextRenewalDate -> next_renewal
+      billing_cycle: sub.billingCycle,
+      next_renewal: sub.nextRenewalDate,
       category: sub.category,
       notes: sub.notes || '',
       active: sub.active,
-      shared_with: sub.shared ? [user.id] : [], // ✅ shared -> shared_with
-      price_history: sub.priceHistory || [],    // ✅ priceHistory -> price_history
+      shared_with: sub.shared ? [user.id] : [],
+      price_history: sub.priceHistory || [],
       user_id: user.id,
     };
-
     const { data, error } = await supabase.from('subscriptions').insert([dbSub]).select().single();
     if (error) throw error;
     if (data) setSubscriptions(prev => [data, ...prev]);
   };
 
-  // ✅ FIX: Update Subscription (Column mapping sahi kiya)
   const updateSubscription = async (id: string, updates: Partial<Subscription>) => {
     const dbUpdates: any = {};
     if (updates.name) dbUpdates.name = updates.name;
-    if (updates.cost !== undefined) dbUpdates.price = updates.cost; // ✅
+    if (updates.cost !== undefined) dbUpdates.price = updates.cost;
     if (updates.currency) dbUpdates.currency = updates.currency;
-    if (updates.billingCycle) dbUpdates.billing_cycle = updates.billingCycle; // ✅
-    if (updates.nextRenewalDate !== undefined) dbUpdates.next_renewal = updates.nextRenewalDate; // ✅
+    if (updates.billingCycle) dbUpdates.billing_cycle = updates.billingCycle;
+    if (updates.nextRenewalDate !== undefined) dbUpdates.next_renewal = updates.nextRenewalDate;
     if (updates.category) dbUpdates.category = updates.category;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     if (updates.active !== undefined) dbUpdates.active = updates.active;
-    if (updates.shared !== undefined) dbUpdates.shared_with = updates.shared ? [user.id] : []; // ✅
-    if (updates.priceHistory) dbUpdates.price_history = updates.priceHistory; // ✅
+    if (updates.shared !== undefined) dbUpdates.shared_with = updates.shared ? [user.id] : [];
+    if (updates.priceHistory) dbUpdates.price_history = updates.priceHistory;
     dbUpdates.updated_at = new Date().toISOString();
-
     const { data, error } = await supabase.from('subscriptions').update(dbUpdates).eq('id', id).select().single();
     if (error) throw error;
     if (data) setSubscriptions(prev => prev.map(sub => sub.id === id ? data : sub));
@@ -184,7 +168,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setSubscriptions(prev => prev.filter(sub => sub.id !== id));
   };
 
-  // ✅ Derived values
+  // ✅ Derived values (GUARANTEED ARRAYS)
   const monthly = useMemo(() => subscriptions.filter(s => s.active).reduce((sum, s) => {
     if (s.billingCycle === 'yearly') return sum + s.cost / 12;
     if (s.billingCycle === 'weekly') return sum + s.cost * 4.33;
@@ -216,12 +200,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
   }, [monthly]);
 
-  // ✅ Dummy alerts, family, updateProfile
+  // ✅ GUARANTEED EMPTY ARRAYS (Fix for "length" error)
   const alerts = useMemo(() => [], []);
+  const family = useMemo(() => [], []);
   const updateProfile = useCallback((updates: any) => {
     console.log('Profile updated:', updates);
   }, []);
-  const family = useMemo(() => [], []);
   const addFamilyMember = useCallback(() => true, []);
   const removeFamilyMember = useCallback(() => {}, []);
 

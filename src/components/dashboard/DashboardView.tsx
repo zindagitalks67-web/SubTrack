@@ -25,9 +25,10 @@ interface DashboardViewProps {
 }
 
 export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewProps) {
-  const { monthly, annual, categories, forecast, activeCount, sharedCount, hikesCount, subscriptions, profile, updateSubscription } = useSubscriptions();
-  const { bills } = useBills();
-  const { transactions } = useFinance();
+  // Contexts with safety checks
+  const { monthly, annual, categories = [], forecast = [], activeCount, sharedCount, hikesCount, subscriptions = [], profile, updateSubscription } = useSubscriptions();
+  const { bills = [] } = useBills();
+  const { transactions = [] } = useFinance();
   const { monthlyBudget } = useBudget();
 
   const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
@@ -38,29 +39,31 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
     });
   }, []);
 
-  const targetCurrency = (profile.currency as CurrencyCode) || 'USD';
+  const targetCurrency = (profile?.currency as CurrencyCode) || 'USD';
 
-  const totalBills = useMemo(() => bills.reduce((sum, b) => sum + b.amount, 0), [bills]);
-  const totalExpenses = useMemo(() => transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0), [transactions]);
-  const totalIncome = useMemo(() => transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0), [transactions]);
+  // ✅ Safety checks using || []
+  const totalBills = useMemo(() => (bills || []).reduce((sum, b) => sum + b.amount, 0), [bills]);
+  const totalExpenses = useMemo(() => (transactions || []).filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0), [transactions]);
+  const totalIncome = useMemo(() => (transactions || []).filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0), [transactions]);
   
   const totalMonthlySpend = monthly + totalBills + totalExpenses;
   const remainingBudget = monthlyBudget - totalMonthlySpend;
   const budgetPercent = monthlyBudget > 0 ? Math.min((totalMonthlySpend / monthlyBudget) * 100, 100) : 0;
   const isOverBudget = totalMonthlySpend > monthlyBudget;
 
+  // ✅ Safety checks for urgentRenewals and upcoming
   const urgentRenewals = useMemo(() => {
-    const reminderDays = profile.reminderDays || 3;
-    return subscriptions
+    const reminderDays = profile?.reminderDays || 3;
+    return (subscriptions || [])
       .filter((s) => s.active && s.nextRenewalDate)
       .map((s) => ({ s, days: daysUntil(s.nextRenewalDate!) }))
       .filter((item) => item.days <= reminderDays)
       .sort((a, b) => a.days - b.days);
-  }, [subscriptions, profile.reminderDays]);
+  }, [subscriptions, profile?.reminderDays]);
 
   const upcoming = useMemo(
     () =>
-      subscriptions
+      (subscriptions || [])
         .filter((s) => s.active && s.nextRenewalDate)
         .sort((a, b) => new Date(a.nextRenewalDate!).getTime() - new Date(b.nextRenewalDate!).getTime())
         .slice(0, 4),
@@ -69,7 +72,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
 
   const topHike = useMemo(() => {
     let best: { s: Subscription; pct: number } | null = null;
-    for (const s of subscriptions) {
+    for (const s of (subscriptions || [])) {
       if (s.priceHistory.length === 0) continue;
       const last = s.priceHistory[s.priceHistory.length - 1];
       const pct = ((last.newPrice - last.oldPrice) / last.oldPrice) * 100;
@@ -78,18 +81,17 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
     return best;
   }, [subscriptions]);
 
-  const forecastMax = Math.max(...forecast.map((f) => f.amount), 1);
+  // ✅ Safety check for forecastMax
+  const forecastMax = Math.max(...(forecast || []).map((f) => f.amount), 1);
   
-  // ✅ Fix 1: sharedSplit(s) ko sharedSplit(s as any) kiya
   const yourShareMonthly = useMemo(
     () =>
-      subscriptions
+      (subscriptions || [])
         .filter((s) => s.active && s.shared)
         .reduce((sum, s) => sum + sharedSplit(s as any).yourShare, 0),
     [subscriptions],
   );
 
-  // ✅ Fix 2: updateSubscription mein (s as any) lagaya
   const handleMarkPaid = (s: Subscription) => {
     const nextDate = getNextRenewalDate(s.nextRenewalDate!, s.billingCycle);
     updateSubscription(s.id, { ...(s as any), nextRenewalDate: nextDate });
@@ -98,8 +100,8 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
   return (
     <div className="animate-fade-in space-y-4">
       <Header
-        title={`Hi, ${profile.name.split(' ')[0]}`}
-        subtitle={`${TIER_LABELS[profile.tier as keyof typeof TIER_LABELS]} plan · ${activeCount} active subscriptions`}
+        title={`Hi, ${profile?.name?.split(' ')[0] || 'User'}`}
+        subtitle={`${TIER_LABELS[profile?.tier as keyof typeof TIER_LABELS] || 'Free'} plan · ${activeCount} active subscriptions`}
         icon={Wallet}
       />
 
@@ -130,6 +132,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         </div>
       )}
 
+      {/* Hero Spend Card */}
       <div className="relative overflow-hidden rounded-3xl p-5 bg-brand-gradient-strong shadow-glow">
         <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
         <div className="absolute -right-4 bottom-0 w-24 h-24 rounded-full bg-brand-cyan/30 blur-xl" />
@@ -150,6 +153,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         </div>
       </div>
 
+      {/* Budget Card */}
       <GlassCard className={`p-4 border ${isOverBudget ? 'border-danger/30' : 'border-brand-purple/30'}`}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
@@ -168,13 +172,15 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         </p>
       </GlassCard>
 
+      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <StatCard icon={CalendarClock} label="Upcoming" value={String(upcoming.length)} accent="#3b82f6" />
         <StatCard icon={Users} label="Shared" value={String(sharedCount)} accent="#22d3ee" />
         <StatCard icon={TrendingUp} label="Price hikes" value={String(hikesCount)} accent="#ef4444" />
       </div>
 
-      {categories.length > 0 && (
+      {/* Categories */}
+      {(categories || []).length > 0 && (
         <GlassCard>
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-content-primary text-sm">Spending by category</h3>
@@ -184,7 +190,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={categories} dataKey="monthly" nameKey="category" innerRadius={38} outerRadius={60} paddingAngle={2} stroke="none">
-                    {categories.map((c) => (<Cell key={c.category} fill={c.color} />))}
+                    {(categories || []).map((c) => (<Cell key={c.category} fill={c.color} />))}
                   </Pie>
                   <Tooltip content={<DoughnutTooltip currency={targetCurrency} rates={liveRates} />} />
                 </PieChart>
@@ -195,7 +201,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
               </div>
             </div>
             <div className="flex-1 space-y-1.5 min-w-0">
-              {categories.slice(0, 5).map((c) => (
+              {(categories || []).slice(0, 5).map((c) => (
                 <div key={c.category} className="flex items-center gap-2 text-xs">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                   <span className="text-content-secondary truncate flex-1">{c.category}</span>
@@ -207,10 +213,11 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         </GlassCard>
       )}
 
+      {/* Forecast */}
       <GlassCard>
         <h3 className="font-semibold text-content-primary text-sm mb-3">6-month forecast</h3>
         <div className="flex items-end justify-between gap-2 h-32">
-          {forecast.map((f, i) => (
+          {(forecast || []).map((f, i) => (
             <div key={f.monthKey} className="flex-1 flex flex-col items-center gap-1.5">
               <div className="w-full flex items-end justify-center h-full">
                 <div className="w-full max-w-[34px] rounded-t-lg bg-gradient-to-t from-brand-blue/40 to-brand-purple/80 transition-all duration-500" style={{ height: `${Math.max((f.amount / forecastMax) * 100, 6)}%`, animationDelay: `${i * 60}ms` }} title={`${f.month}: ${formatCurrency(f.amount, targetCurrency, liveRates)}`} />
@@ -222,6 +229,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         </div>
       </GlassCard>
 
+      {/* Top Hike */}
       {topHike && (
         <GlassCard onClick={() => onEditSubscription(topHike.s)} className="border-danger/30 cursor-pointer">
           <div className="flex items-center gap-3">
@@ -235,16 +243,17 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
         </GlassCard>
       )}
 
+      {/* Upcoming Renewals */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-content-primary text-sm">Upcoming renewals</h3>
           <button onClick={() => onNavigate('subscriptions')} className="text-xs text-brand-purple hover:underline">View all</button>
         </div>
         <div className="space-y-2">
-          {upcoming.length === 0 ? (
+          {(upcoming || []).length === 0 ? (
             <p className="text-sm text-content-muted py-4 text-center">No upcoming renewals.</p>
           ) : (
-            upcoming.map((s) => {
+            (upcoming || []).map((s) => {
               const cat = CATEGORY_MAP[s.category];
               const days = s.nextRenewalDate ? daysUntil(s.nextRenewalDate) : null;
               const urgent = days !== null && days <= 3;
