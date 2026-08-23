@@ -2,167 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  :root {
-    color-scheme: dark;
-  }
-
-  * {
-    -webkit-tap-highlight-color: transparent;
-  }
-
-  html,
-  body,
-  #root {
-    min-height: 100%;
-  }
-
-  body {
-    @apply bg-base text-content-primary font-sans antialiased;
-    background-image:
-      radial-gradient(60% 50% at 15% 0%, rgba(139, 92, 246, 0.12) 0%, rgba(139, 92, 246, 0) 60%),
-      radial-gradient(50% 45% at 100% 10%, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 55%),
-      radial-gradient(40% 40% at 50% 100%, rgba(34, 211, 238, 0.06) 0%, rgba(34, 211, 238, 0) 60%);
-    background-attachment: fixed;
-  }
-
-  ::selection {
-    @apply bg-brand-purple/40 text-white;
-  }
-
-  /* Scrollbar */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-white/10 rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-white/20;
-  }
-
-  input,
-  select,
-  textarea {
-    @apply text-content-primary;
-  }
-
-  /* Remove number input spinners */
-  input[type='number']::-webkit-outer-spin-button,
-  input[type='number']::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  input[type='number'] {
-    -moz-appearance: textfield;
-  }
-}
-
-@layer components {
-  .glass {
-    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08];
-  }
-
-  .glass-card {
-    @apply bg-white/[0.035] backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-card;
-  }
-
-  .glass-nav {
-    @apply bg-black/50 backdrop-blur-2xl border border-white/[0.08];
-  }
-
-  .glass-input {
-    @apply bg-white/[0.04] backdrop-blur-md border border-white/10 rounded-xl
-      text-white placeholder:text-content-muted
-      focus:outline-none focus:ring-2 focus:ring-brand-purple/50 focus:border-brand-purple/50
-      transition-all duration-200;
-  }
-
-  .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-brand-purple to-brand-blue;
-  }
-
-  .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl
-      bg-brand-gradient text-white font-semibold
-      px-4 py-2.5 shadow-glow
-      hover:opacity-90 active:scale-[0.98]
-      transition-all duration-200
-      disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100;
-  }
-
-  .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl
-      bg-white/[0.05] border border-white/10 text-content-secondary font-medium
-      px-4 py-2.5
-      hover:bg-white/[0.09] hover:text-content-primary active:scale-[0.98]
-      transition-all duration-200;
-  }
-
-  .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl
-      bg-danger/15 border border-danger/30 text-danger font-medium
-      px-4 py-2.5
-      hover:bg-danger/25 active:scale-[0.98]
-      transition-all duration-200;
-  }
-
-  .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
-  }
-
-  .nav-item {
-    @apply relative flex flex-col items-center justify-center gap-1 flex-1
-      py-2.5 text-content-muted transition-colors duration-200;
-  }
-}
-
-@layer utilities {
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  .safe-top {
-    padding-top: env(safe-area-inset-top, 0px);
-  }
-  .text-balance {
-    text-wrap: balance;
-  }
-}
-/* Global Fix: Text aur Inputs ko Dark Color do */
+/* FINAL LIGHT MODE FIX */
 :root {
-  --content-primary: #111827; /* Dark Gray */
-  --content-secondary: #374151;
-  --content-muted: #6b7280;
+  color-scheme: light !important;
+  --content-primary: #111827 !important;  /* Dark Text */
+  --content-secondary: #4b5563 !important; /* Gray Text */
+  --content-muted: #6b7280 !important;     /* Muted Gray */
 }
 
-/* Input fields ka text dark karo aur background white karo */
+body {
+  background-color: #f3f4f6 !important;
+}
+
+/* Make Glass Cards Opaque White */
+.glass, .glass-card, .glass-nav {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Force ALL Text Classes to Dark */
+.text-content-primary, .text-content-secondary, .text-content-muted {
+  color: #111827 !important;
+}
+
+.text-content-secondary {
+  color: #4b5563 !important;
+}
+
+.text-content-muted {
+  color: #6b7280 !important;
+}
+
+/* Input fields force dark text on white */
 input, select, textarea {
   color: #111827 !important;
   background-color: #ffffff !important;
 }
 
-/* Form Labels aur Headings dark kar do */
+/* All other text dark */
 h1, h2, h3, h4, h5, h6, p, span, label, div {
-  color: var(--content-primary);
+  color: #111827 !important;
 }
 
-/* Glass Card ke andar ka text dark karo */
-.glass-card {
-  color: #111827;
+/* Buttons Warna bhi fix */
+.btn-primary {
+  background: linear-gradient(to right, #7c3aed, #4f46e5);
+  color: white !important;
 }
 
-/* Calendar aur Budget ke text bhi dark karo */
-.calendar-grid, .budget-card {
-  color: #111827;
+.btn-ghost {
+  color: #111827 !important;
 }
