@@ -100,18 +100,21 @@ function AppShell() {
       <PaywallModal />
       <ToastContainer />
       
-      <SubscriptionForm
-        initialData={editing}
-        onClose={() => setEditOpen(false)}
-        onSubmit={async (data) => {
-          if (editing) {
-            await updateSubscription(editing.id, data);
-          } else {
-            await addSubscription(data);
-          }
-          setEditOpen(false);
-        }}
-      />
+            {/* Add/Edit Modal - Sirf editOpen true hone par dikhega */}
+      {editOpen && (
+        <SubscriptionForm
+          initialData={editing}
+          onClose={() => setEditOpen(false)}
+          onSubmit={async (data) => {
+            if (editing) {
+              await updateSubscription(editing.id, data);
+            } else {
+              await addSubscription(data);
+            }
+            setEditOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
