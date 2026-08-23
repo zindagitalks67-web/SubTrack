@@ -4,20 +4,20 @@ import type { SubscriptionTier } from '@/types';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 
 export function PaywallModal() {
-  const { paywall, upgradeTier, profile } = useSubscriptions();
+  const { paywall, profile } = useSubscriptions();  // ✅ upgradeTier ko hata diya
   const [selectedMethod, setSelectedMethod] = useState<'express' | 'card' | 'redeem'>('express');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const isOpen = paywall?.state?.open ?? (paywall as any)?.isOpen ?? false;
+  const isOpen = paywall?.isOpen ?? false;
 
   if (!isOpen) return null;
 
   const handlePayment = () => {
     setIsProcessing(true);
     setTimeout(() => {
-      upgradeTier('monthly' as SubscriptionTier);
+      paywall.upgradeTier('monthly' as SubscriptionTier);  // ✅ `paywall.upgradeTier` use kiya
       setIsProcessing(false);
-      paywall.close();
+      paywall.close();  // ✅ `paywall.close` use kiya
     }, 1200);
   };
 
@@ -56,7 +56,7 @@ export function PaywallModal() {
         {/* Scrollable Payment Options */}
         <div className="p-5 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
 
-          {/* 1. Express Checkout (Apple Pay / Google Pay) */}
+          {/* 1. Express Checkout */}
           <div 
             onClick={() => setSelectedMethod('express')}
             className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
@@ -110,7 +110,7 @@ export function PaywallModal() {
             />
           </div>
 
-          {/* Card Form inputs (only if card selected) */}
+          {/* Card Form inputs */}
           {selectedMethod === 'card' && (
             <div className="p-3 bg-white/[0.03] rounded-xl border border-white/5 space-y-2 animate-fade-in">
               <input 

@@ -1,70 +1,78 @@
 import React from 'react';
-import { SharedMember } from '@/types';
-import { CheckCircle2, XCircle, UserCheck } from 'lucide-react';
+import { Calendar, DollarSign, Users, Edit2, Trash2 } from 'lucide-react';
+import type { Subscription } from '@/context/SubscriptionContext';
 
-interface SharedSplitCardProps {
-  members: SharedMember[];
-  currencySymbol?: string;
-  onToggleStatus: (memberId: string) => void;
+interface SubscriptionCardProps {
+  subscription: Subscription;
+  onEdit: (sub: Subscription) => void;
+  onDelete?: (id: string) => void;
 }
 
-export const SharedSplitCard: React.FC<SharedSplitCardProps> = ({
-  members,
-  currencySymbol = '₹',
-  onToggleStatus,
-}) => {
-  if (!members || members.length === 0) return null;
+export function SubscriptionCard({ subscription, onEdit, onDelete }: SubscriptionCardProps) {
+  const {
+    id,
+    name,
+    cost,           // ✅ 'price' ki jagah 'cost'
+    currency,
+    billingCycle,
+    nextRenewalDate, // ✅ 'nextRenewal' ki jagah 'nextRenewalDate'
+    category,
+    active,
+    shared,          // ✅ 'shared_with' ki jagah 'shared'
+  } = subscription;
 
-  const totalOwed = members
-    .filter((m) => !m.hasPaid)
-    .reduce((sum, m) => sum + m.amount, 0);
+  const formattedDate = nextRenewalDate
+    ? new Date(nextRenewalDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : 'N/A';
+
+  const cycleLabel = billingCycle.charAt(0).toUpperCase() + billingCycle.slice(1);
 
   return (
-    <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 mt-3 space-y-3">
-      <div className="flex justify-between items-center text-sm font-medium border-b border-slate-700/50 pb-2">
-        <span className="text-slate-300 flex items-center gap-1.5">
-          <UserCheck className="w-4 h-4 text-indigo-400" />
-          Shared Splits ({members.length})
-        </span>
-        <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
-          Pending: {currencySymbol}{totalOwed}
-        </span>
+    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border ${active ? 'border-gray-200 dark:border-gray-700' : 'border-red-200 dark:border-red-800'} p-4 transition-all`}>
+      <div className="flex justify-between items-start">
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">{name}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{category || 'Uncategorized'}</p>
+        </div>
+        <div className="flex gap-1">
+          <button
+            onClick={() => onEdit(subscription)}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+          >
+            <Edit2 className="w-4 h-4 text-gray-500" />
+          </button>
+          {onDelete && (
+            <button
+              onClick={() => onDelete(id)}
+              className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30"
+            >
+              <Trash2 className="w-4 h-4 text-red-500" />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="space-y-2">
-        {members.map((member) => (
-          <div
-            key={member.id}
-            className="flex items-center justify-between bg-slate-900/50 px-3 py-2 rounded-lg text-xs"
-          >
-            <div>
-              <p className="font-semibold text-slate-200">{member.name}</p>
-              <p className="text-slate-400">
-                {currencySymbol}{member.amount} / month
-              </p>
-            </div>
-
-            <button
-              onClick={() => onToggleStatus(member.id)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-md transition-colors font-medium ${
-                member.hasPaid
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30'
-              }`}
-            >
-              {member.hasPaid ? (
-                <>
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Settled
-                </>
-              ) : (
-                <>
-                  <XCircle className="w-3.5 h-3.5" /> Mark Paid
-                </>
-              )}
-            </button>
+      <div className="mt-2 flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-1 text-sm">
+          <DollarSign className="w-4 h-4 text-gray-400" />
+          <span className="font-medium text-gray-900 dark:text-white">
+            {currency} {cost.toFixed(2)} / {cycleLabel}
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+          <Calendar className="w-4 h-4" />
+          <span>Next: {formattedDate}</span>
+        </div>
+        {shared && (
+          <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+            <Users className="w-4 h-4" />
+            <span>Shared</span>
           </div>
-        ))}
+        )}
+        {!active && (
+          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Inactive</span>
+        )}
       </div>
     </div>
   );
-};
+}
