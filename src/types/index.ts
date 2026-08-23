@@ -4,7 +4,8 @@ export type SubscriptionTier = 'free' | 'premium_monthly' | 'premium_yearly' | '
 
 export type AlertKind = 'renewal' | 'price_hike';
 
-export type ViewKey = 'dashboard' | 'subscriptions' | 'alerts' | 'family' | 'settings';
+// ✅ Only one ViewKey (with 'finance' and 'bills' added)
+export type ViewKey = 'dashboard' | 'subscriptions' | 'bills' | 'finance' | 'analytics' | 'calendar' | 'budget' | 'insights' | 'family' | 'alerts' | 'settings';
 
 export interface PriceHistoryEntry {
   id: string;
@@ -84,7 +85,3 @@ export interface SharedMember {
   amount: number;
   hasPaid: boolean;
 }
-
-// In your existing Subscription interface, ensure these fields are supported:
-// sharedWith?: SharedMember[];
-// isShared?: boolean;

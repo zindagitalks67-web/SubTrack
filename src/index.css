@@ -77,7 +77,7 @@
 
   .glass-input {
     @apply bg-white/[0.04] backdrop-blur-md border border-white/10 rounded-xl
-      text-content-primary placeholder:text-content-muted
+      text-white placeholder:text-content-muted
       focus:outline-none focus:ring-2 focus:ring-brand-purple/50 focus:border-brand-purple/50
       transition-all duration-200;
   }

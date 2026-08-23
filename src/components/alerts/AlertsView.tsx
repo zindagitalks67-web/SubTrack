@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Bell, CalendarClock, TrendingUp, Check, X } from 'lucide-react';
+import { Bell, CalendarClock, TrendingUp } from 'lucide-react';
 import type { AlertKind } from '@/types';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';

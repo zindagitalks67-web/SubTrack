@@ -1,115 +1,124 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { Plus, Search, Layers } from 'lucide-react';
 import { useSubscriptions } from '@/context/SubscriptionContext';
+import type { Subscription } from '@/context/SubscriptionContext';
 import { SubscriptionCard } from './SubscriptionCard';
-import { SubscriptionForm } from './SubscriptionForm'; // Jo bhi aapka edit/add modal component ho
-import type { Subscription } from '@/types';
-import { Plus, Search, ArrowUpDown } from 'lucide-react';
+import { SubscriptionForm } from './SubscriptionForm';
+import { Header } from '@/components/common/Header';
+import { EmptyState } from '@/components/common/EmptyState';
 
 export function SubscriptionsView() {
-  const { subscriptions } = useSubscriptions();
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  
-  // Edit Modal States
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
+  const { subscriptions, addSubscription, updateSubscription, deleteSubscription } = useSubscriptions();
+  const [showForm, setShowForm] = useState(false);
+  const [editingSub, setEditingSub] = useState<Subscription | null>(null);
+  const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All');
 
-  // Categories list
-  const categories = ['All', 'Entertainment', 'Music', 'Productivity', 'Storage', 'Utility'];
-
-  const filteredSubscriptions = subscriptions.filter((sub) => {
-    const matchesCategory = selectedCategory === 'All' || sub.category === selectedCategory;
-    const matchesSearch = sub.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+  const filtered = subscriptions.filter((s) => {
+    const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = categoryFilter === 'All' || s.category === categoryFilter;
+    return matchesSearch && matchesCategory;
   });
 
-  const handleEditClick = (sub: Subscription) => {
-    setEditingSubscription(sub);
-    setIsEditModalOpen(true);
+  const handleEdit = (sub: Subscription) => {
+    setEditingSub(sub);
+    setShowForm(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Are you sure you want to delete this subscription?')) {
+      deleteSubscription(id);
+    }
   };
 
   return (
-    <div className="space-y-4 pb-20">
-      {/* Header & Search */}
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-content-primary">Subscriptions</h1>
-            <p className="text-xs text-content-secondary">Managing {subscriptions.length} active services</p>
-          </div>
+    <div className="animate-fade-in space-y-4">
+      <Header
+        title="Subscriptions"
+        subtitle={`Managing ${subscriptions.length} active services`}
+        icon={Layers}
+        actions={
           <button
             onClick={() => {
-              setEditingSubscription(null);
-              setIsEditModalOpen(true);
+              setEditingSub(null);
+              setShowForm(true);
             }}
-            className="flex items-center gap-1.5 bg-brand-indigo hover:bg-brand-indigo/90 text-white px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
+            className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Add
+            <Plus className="w-4 h-4" /> Add Subscription
           </button>
-        </div>
+        }
+      />
 
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-content-muted" />
-            <input
-              type="text"
-              placeholder="Search subscriptions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-panel border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-content-primary focus:outline-none focus:border-brand-indigo"
-            />
-          </div>
+      {/* Search & Filter */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
+          <input
+            type="text"
+            placeholder="Search subscriptions..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="glass-input w-full pl-9 pr-4 py-2.5 text-sm"
+          />
         </div>
-      </div>
-
-      {/* FIXED: Filter Tabs with horizontal scroll and no cut-offs */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 w-full max-w-full">
-        {categories.map((category) => {
-          const count = category === 'All' 
-            ? subscriptions.length 
-            : subscriptions.filter(s => s.category === category).length;
-            
-          return (
+        <div className="flex gap-2 overflow-x-auto">
+          {['All', 'Entertainment', 'Music', 'Productivity', 'Cloud Storage', 'Other'].map((cat) => (
             <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
-                selectedCategory === category
-                  ? 'bg-brand-indigo text-white shadow-lg'
-                  : 'bg-panel border border-white/10 text-content-secondary hover:text-content-primary'
+              key={cat}
+              onClick={() => setCategoryFilter(cat)}
+              className={`chip px-3 py-1.5 border transition-all ${
+                categoryFilter === cat
+                  ? 'border-brand-purple/60 bg-brand-gradient-soft text-content-primary'
+                  : 'border-white/10 bg-white/[0.03] text-content-secondary'
               }`}
             >
-              {category} ({count})
+              {cat}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      {/* Subscriptions Grid / List */}
-      <div className="grid grid-cols-1 gap-3">
-        {filteredSubscriptions.length > 0 ? (
-          filteredSubscriptions.map((sub) => (
+      {/* List */}
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={Layers}
+          title="No subscriptions found"
+          description="Add one by clicking the '+' button above."
+          action={
+            <button onClick={() => { setEditingSub(null); setShowForm(true); }} className="btn-primary text-sm">
+              <Plus className="w-4 h-4" /> Add Subscription
+            </button>
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((sub) => (
             <SubscriptionCard
               key={sub.id}
               subscription={sub}
-              onEdit={handleEditClick}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
             />
-          ))
-        ) : (
-          <div className="text-center py-10 text-xs text-content-muted">
-            No subscriptions found.
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-   {/* Edit / Add Modal Component Integration */}
-      <SubscriptionForm
-        open={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingSubscription(null);
-        }}
-      />
+      {/* Add/Edit Modal */}
+      {showForm && (
+        <SubscriptionForm
+          initialData={editingSub}
+          onClose={() => setShowForm(false)}
+          onSubmit={async (data) => {
+            if (editingSub) {
+              await updateSubscription(editingSub.id, data);
+            } else {
+              await addSubscription(data);
+            }
+            setShowForm(false);
+          }}
+        />
+      )}
     </div>
   );
 }
