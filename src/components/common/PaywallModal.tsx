@@ -4,7 +4,7 @@ import type { SubscriptionTier } from '@/types';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 
 export function PaywallModal() {
-  const { paywall, profile, updateProfile } = useSubscriptions(); // ✅ updateProfile use kiya
+  const { paywall, profile, updateProfile } = useSubscriptions();
   const [selectedMethod, setSelectedMethod] = useState<'express' | 'card' | 'redeem'>('express');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -14,20 +14,12 @@ export function PaywallModal() {
 
   const handlePayment = async () => {
     setIsProcessing(true);
-    
-    // ✅ Simulate payment processing, then actually update the user profile
     setTimeout(async () => {
       try {
-        // Real update - make user Premium
         await updateProfile({ tier: 'premium' });
-        
-        // Update paywall state to close
-        paywall.upgradeTier('monthly');  // ✅ Ye sahi hai, kyunki 'monthly' valid tier hai
-        
-        // Close modal
+        paywall.upgradeTier('monthly');
         paywall.close();
-        
-        alert("🎉 Welcome to SubTrack Pro! Your premium features are now active.");
+        alert("🎉 Welcome to SubTrack Pro!");
       } catch (error) {
         alert("Payment failed. Please try again.");
       } finally {
@@ -36,114 +28,125 @@ export function PaywallModal() {
     }, 1200);
   };
 
+  // 100% Inline Styles (Koi bhi global CSS isko override nahi kar sakti)
+  const whiteText = { color: '#ffffff', opacity: 1, textShadow: 'none' };
+  const grayText = { color: '#9ca3af', opacity: 1, textShadow: 'none' };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="relative w-full max-w-md bg-[#16181D] text-white rounded-3xl border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.9)', opacity: 1 }}>
+      <div className="relative w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ backgroundColor: '#16181D', border: '1px solid rgba(255,255,255,0.1)', opacity: 1 }}>
         
-        {/* Top Header Section */}
-        <div className="p-6 border-b border-white/10 relative bg-gradient-to-b from-purple-900/20 to-transparent shrink-0">
+        {/* Header */}
+        <div className="p-6 border-b shrink-0" style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'linear-gradient(to bottom, rgba(139, 92, 246, 0.3), transparent)' }}>
           <button 
             onClick={() => paywall.close()} 
-            className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition-all"
+            className="absolute top-4 right-4 p-1 rounded-full"
+            style={{ color: '#ffffff' }}
           >
             <X className="w-5 h-5" />
           </button>
           
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-xl font-bold shadow-lg shadow-purple-500/30">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-bold shadow-lg" style={{ background: 'linear-gradient(135deg, #8b5cf6, #6366f1)', color: '#ffffff' }}>
               S
             </div>
             <div>
-              <h3 className="font-bold text-lg leading-tight text-white">SubTrack Pro</h3>
-              <p className="text-xs text-gray-400">{profile.email || 'user@example.com'}</p>
+              <h3 className="font-bold text-lg" style={whiteText}>SubTrack Pro</h3>
+              <p className="text-xs" style={grayText}>{profile.email || 'user@example.com'}</p>
             </div>
             <div className="ml-auto text-right pr-4">
-              <span className="text-2xl font-black text-white">$4.99</span>
-              <p className="text-[10px] text-gray-400">/ month</p>
+              <span className="text-2xl font-black" style={whiteText}>$4.99</span>
+              <p className="text-[10px]" style={grayText}>/ month</p>
             </div>
           </div>
 
-          <p className="text-[11px] text-gray-400 mt-3 flex items-center gap-1">
-            <Lock className="w-3 h-3 text-emerald-400 inline" /> International secure checkout powered by Stripe
+          <p className="text-[11px] mt-3 flex items-center gap-1" style={grayText}>
+            <Lock className="w-3 h-3" style={{ color: '#34d399' }} /> International secure checkout
           </p>
         </div>
 
-        {/* Scrollable Payment Options */}
-        <div className="p-5 overflow-y-auto space-y-3 flex-1 min-h-0 custom-scrollbar">
+        {/* Options */}
+        <div className="p-5 overflow-y-auto space-y-3 flex-1 min-h-0">
           <div 
             onClick={() => setSelectedMethod('express')}
-            className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-              selectedMethod === 'express' ? 'border-purple-500 bg-purple-600/15' : 'border-white/10 bg-white/[0.02]'
-            }`}
+            className="p-4 rounded-2xl border cursor-pointer flex items-center justify-between"
+            style={{ borderColor: selectedMethod === 'express' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', backgroundColor: selectedMethod === 'express' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)' }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center"><Smartphone className="w-5 h-5" /></div>
+              <div className="w-9 h-9 rounded-xl border flex items-center justify-center" style={{ borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                <Smartphone className="w-5 h-5" style={whiteText} />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-white">Express Checkout</p>
-                <p className="text-[11px] text-gray-400">Apple Pay, Google Pay, Link</p>
+                <p className="text-sm font-bold" style={whiteText}>Express Checkout</p>
+                <p className="text-[11px]" style={grayText}>Apple Pay, Google Pay, Link</p>
               </div>
             </div>
-            <input type="radio" checked={selectedMethod === 'express'} onChange={() => {}} className="accent-purple-500" />
+            <input type="radio" checked={selectedMethod === 'express'} onChange={() => {}} style={{ accentColor: '#8b5cf6' }} />
           </div>
 
           <div 
             onClick={() => setSelectedMethod('card')}
-            className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-              selectedMethod === 'card' ? 'border-purple-500 bg-purple-600/15' : 'border-white/10 bg-white/[0.02]'
-            }`}
+            className="p-4 rounded-2xl border cursor-pointer flex items-center justify-between"
+            style={{ borderColor: selectedMethod === 'card' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', backgroundColor: selectedMethod === 'card' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)' }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30"><CreditCard className="w-5 h-5 text-blue-400" /></div>
+              <div className="w-9 h-9 rounded-xl border flex items-center justify-center" style={{ borderColor: 'rgba(59, 130, 246, 0.3)', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
+                <CreditCard className="w-5 h-5" style={{ color: '#60a5fa' }} />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-white">Credit or Debit Card</p>
-                <p className="text-[11px] text-gray-400">Visa, MasterCard, AMEX</p>
+                <p className="text-sm font-bold" style={whiteText}>Credit or Debit Card</p>
+                <p className="text-[11px]" style={grayText}>Visa, MasterCard, AMEX</p>
               </div>
             </div>
-            <input type="radio" checked={selectedMethod === 'card'} onChange={() => {}} className="accent-purple-500" />
+            <input type="radio" checked={selectedMethod === 'card'} onChange={() => {}} style={{ accentColor: '#8b5cf6' }} />
           </div>
 
           {selectedMethod === 'card' && (
-            <div className="p-3 bg-white/[0.03] rounded-xl border border-white/5 space-y-2">
-              <input type="text" placeholder="Card number" className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+            <div className="p-3 rounded-xl border space-y-2" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.05)' }}>
+              <input type="text" placeholder="Card number" className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none" style={{ color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)' }} />
               <div className="flex gap-2">
-                <input type="text" placeholder="MM / YY" className="w-1/2 bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
-                <input type="text" placeholder="CVC" className="w-1/2 bg-black/40 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500" />
+                <input type="text" placeholder="MM / YY" className="w-1/2 rounded-lg px-3 py-2.5 text-sm focus:outline-none" style={{ color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)' }} />
+                <input type="text" placeholder="CVC" className="w-1/2 rounded-lg px-3 py-2.5 text-sm focus:outline-none" style={{ color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.2)' }} />
               </div>
             </div>
           )}
 
           <div 
             onClick={() => setSelectedMethod('redeem')}
-            className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-              selectedMethod === 'redeem' ? 'border-purple-500 bg-purple-600/15' : 'border-white/10 bg-white/[0.02]'
-            }`}
+            className="p-4 rounded-2xl border cursor-pointer flex items-center justify-between"
+            style={{ borderColor: selectedMethod === 'redeem' ? '#8b5cf6' : 'rgba(255,255,255,0.1)', backgroundColor: selectedMethod === 'redeem' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.03)' }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30"><Gift className="w-5 h-5 text-amber-400" /></div>
+              <div className="w-9 h-9 rounded-xl border flex items-center justify-center" style={{ borderColor: 'rgba(245, 158, 11, 0.3)', backgroundColor: 'rgba(245, 158, 11, 0.1)' }}>
+                <Gift className="w-5 h-5" style={{ color: '#fbbf24' }} />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-white">Redeem Promo Code</p>
-                <p className="text-[11px] text-gray-400">Have a gift card or discount code?</p>
+                <p className="text-sm font-bold" style={whiteText}>Redeem Promo Code</p>
+                <p className="text-[11px]" style={grayText}>Have a gift card or code?</p>
               </div>
             </div>
-            <input type="radio" checked={selectedMethod === 'redeem'} onChange={() => {}} className="accent-purple-500" />
+            <input type="radio" checked={selectedMethod === 'redeem'} onChange={() => {}} style={{ accentColor: '#8b5cf6' }} />
           </div>
         </div>
 
-        {/* Footer Action Button */}
-        <div className="p-5 border-t border-white/10 bg-black/40 shrink-0">
+        {/* Footer */}
+        <div className="p-5 border-t shrink-0" style={{ borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <button
             onClick={handlePayment}
             disabled={isProcessing}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-sm shadow-lg shadow-purple-600/30 transition-all active:scale-[0.98] disabled:opacity-50"
+            className="w-full py-3.5 px-4 rounded-2xl font-bold text-sm shadow-lg transition-all disabled:opacity-50"
+            style={{ background: 'linear-gradient(90deg, #8b5cf6, #6366f1)', color: '#ffffff' }}
           >
-            {isProcessing ? 'Processing Transaction...' : 'Subscribe for $4.99/mo'}
+            {isProcessing ? 'Processing...' : 'Subscribe for $4.99/mo'}
           </button>
-          <div className="flex items-center justify-center gap-1 mt-3 text-[10px] text-gray-500">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Encrypted 256-Bit SSL Global Payment Gateway</span>
+          <div className="flex items-center justify-center gap-1 mt-3 text-[10px]" style={grayText}>
+            <ShieldCheck className="w-3.5 h-3.5" style={{ color: '#34d399' }} />
+            <span>Encrypted SSL Secure</span>
           </div>
         </div>
+
       </div>
     </div>
   );
 }
+<div className="fixed inset-0 z-[9999] paywall-modal-root flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.9)', opacity: 1 }}></div>

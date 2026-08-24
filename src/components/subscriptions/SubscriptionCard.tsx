@@ -12,17 +12,17 @@ export function SubscriptionCard({ subscription, onEdit, onDelete }: Subscriptio
   const {
     id,
     name,
-    price,
+    cost,             // ✅ price ki jagah cost
     currency,
     billingCycle,
-    nextRenewal,
+    nextRenewalDate,  // ✅ nextRenewal ki jagah nextRenewalDate
     category,
     active,
-    shared_with,
+    shared,           // ✅ shared_with ki jagah shared (boolean)
   } = subscription;
 
-  const formattedDate = nextRenewal
-    ? new Date(nextRenewal).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formattedDate = nextRenewalDate
+    ? new Date(nextRenewalDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'N/A';
 
   const cycleLabel = billingCycle.charAt(0).toUpperCase() + billingCycle.slice(1);
@@ -56,17 +56,17 @@ export function SubscriptionCard({ subscription, onEdit, onDelete }: Subscriptio
         <div className="flex items-center gap-1 text-sm">
           <DollarSign className="w-4 h-4 text-gray-400" />
           <span className="font-medium text-gray-900 dark:text-white">
-            {currency} {price.toFixed(2)} / {cycleLabel}
+            {currency} {(cost ?? 0).toFixed(2)} / {cycleLabel}
           </span>
         </div>
         <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
           <Calendar className="w-4 h-4" />
           <span>Next: {formattedDate}</span>
         </div>
-        {shared_with && shared_with.length > 0 && (
+        {shared && (
           <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
             <Users className="w-4 h-4" />
-            <span>{shared_with.length} shared</span>
+            <span>Shared</span>
           </div>
         )}
         {!active && (

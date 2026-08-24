@@ -11,20 +11,19 @@ body {
   color: #111827 !important;
 }
 
-h1, h2, h3, h4, h5, h6, p, span, label, div {
-  color: #111827 !important;
-}
+/* 🛑 HATAYA: Ye aggressive rule ab sirf normal content ke liye hai */
+/* h1, h2, h3, h4, h5, h6, p, span, label, div { color: #111827 !important; } */
 
 .glass, .glass-card, .glass-nav {
   background-color: #ffffff !important;
   border-color: #e5e7eb !important;
 }
 
-/* 🛑 FINAL FIX: Input fields force black text on white background */
+/* Input fields force black text on white background */
 input, select, textarea {
   color: #000000 !important;
   background-color: #ffffff !important;
-  -webkit-text-fill-color: #000000 !important; /* Ye sabse important hai */
+  -webkit-text-fill-color: #000000 !important;
   border: 1px solid #e5e7eb !important;
 }
 
@@ -33,13 +32,13 @@ input::placeholder {
   -webkit-text-fill-color: #9ca3af !important;
 }
 
+/* Premium Button */
 .btn-primary {
   background: linear-gradient(to right, #7c3aed, #4f46e5) !important;
   color: white !important;
 }
-/* ---------- Premium UI Styles ---------- */
 
-/* Premium Glass Card Look */
+/* ---------- Premium UI Styles ---------- */
 .glass-card {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
   backdrop-filter: blur(20px);
@@ -47,7 +46,6 @@ input::placeholder {
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
 }
 
-/* Premium Input Look */
 .glass-input {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -59,7 +57,6 @@ input::placeholder {
   outline: none;
 }
 
-/* Premium Button Fallback (agar btn-primary use ho raha ho) */
 .btn-primary {
   background: linear-gradient(135deg, #8b5cf6, #6366f1);
   border-radius: 16px;
@@ -69,4 +66,20 @@ input::placeholder {
 .btn-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 30px -5px rgba(99, 102, 241, 0.5);
+}
+
+/* 🛑 FINAL FIX: Paywall Modal Force White Text on Dark Background */
+.paywall-modal-root,
+.paywall-modal-root h1,
+.paywall-modal-root h2,
+.paywall-modal-root h3,
+.paywall-modal-root h4,
+.paywall-modal-root p,
+.paywall-modal-root span,
+.paywall-modal-root label,
+.paywall-modal-root div {
+  color: #ffffff !important;
+  text-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
 }
