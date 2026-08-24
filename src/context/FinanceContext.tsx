@@ -1,16 +1,17 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 
+export type TransactionType = 'expense' | 'income';
+
 export interface Transaction {
   id: string;
-  type: 'income' | 'expense';
+  type: TransactionType;
+  name: string;
   amount: number;
   currency: string;
   category: string;
-  description: string;
   date: string;
-  paymentMethod?: string;
   notes?: string;
   user_id?: string;
 }
@@ -18,16 +19,19 @@ export interface Transaction {
 interface FinanceContextType {
   transactions: Transaction[];
   loading: boolean;
-  addTransaction: (txn: Omit<Transaction, 'id'>) => Promise<void>;
+  totalExpenses: number;
+  totalIncome: number;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'user_id'>) => Promise<void>;
   updateTransaction: (id: string, updates: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
+  fetchTransactions: () => Promise<void>;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>([]); // ✅ Always array
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTransactions = useCallback(async () => {
@@ -36,86 +40,136 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setLoading(false);
       return;
     }
+
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('date', { ascending: false });
 
       if (error) throw error;
 
-      // ✅ Safe normalization (data null/undefined check)
+      // Normalize snake_case to camelCase
       const normalized = (data || []).map((txn: any) => ({
         id: txn.id,
-        type: txn.type,
-        amount: txn.amount,
-        currency: txn.currency,
+        type: txn.type as TransactionType,
+        name: txn.name,
+        amount: txn.amount ?? 0,
+        currency: txn.currency || 'USD',
         category: txn.category || 'Other',
-        description: txn.description || '',
-        date: txn.date,
-        paymentMethod: txn.payment_method || null, // ✅ snake_case -> camelCase
+        date: txn.date || new Date().toISOString().split('T')[0],
         notes: txn.notes || '',
         user_id: txn.user_id,
       }));
 
       setTransactions(normalized);
+      localStorage.setItem('transactions', JSON.stringify(normalized));
     } catch (error) {
-      console.error('Error fetching transactions:', error);
-      setTransactions([]); // ✅ Ensure array
+      // Fallback to LocalStorage
+      const localData = localStorage.getItem('transactions');
+      if (localData) {
+        try { setTransactions(JSON.parse(localData)); } catch (e) { setTransactions([]); }
+      }
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { fetchTransactions(); }, [user, fetchTransactions]);
-
-  // ✅ FIX: Add Transaction (camelCase -> snake_case mapping)
-  const addTransaction = async (txn: Omit<Transaction, 'id'>) => {
-    if (!user) throw new Error('Not authenticated');
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'user_id'>) => {
+    if (!user) throw new Error('User not authenticated');
     
-    const dbTxn = {
-      type: txn.type,
-      amount: txn.amount,
-      currency: txn.currency,
-      category: txn.category,
-      description: txn.description,
-      date: txn.date,
-      payment_method: txn.paymentMethod || null, // ✅ paymentMethod -> payment_method
-      notes: txn.notes || '',
+    const dbTransaction = {
+      type: transaction.type,
+      name: transaction.name,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      category: transaction.category,
+      date: transaction.date,
+      notes: transaction.notes || '',
       user_id: user.id,
     };
 
-    const { data, error } = await supabase.from('transactions').insert([dbTxn]).select().single();
-    if (error) throw error;
-    if (data) setTransactions(prev => [data, ...prev]);
+    try {
+      const { data, error } = await supabase.from('transactions').insert([dbTransaction]).select().single();
+      if (error) throw error;
+
+      if (data) {
+        const newTransaction: Transaction = {
+          id: data.id,
+          type: data.type,
+          name: data.name,
+          amount: data.amount,
+          currency: data.currency,
+          category: data.category,
+          date: data.date,
+          notes: data.notes,
+          user_id: data.user_id,
+        };
+        setTransactions(prev => [newTransaction, ...prev]);
+        localStorage.setItem('transactions', JSON.stringify([newTransaction, ...transactions]));
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
-  // ✅ FIX: Update Transaction
   const updateTransaction = async (id: string, updates: Partial<Transaction>) => {
     const dbUpdates: any = {};
     if (updates.type) dbUpdates.type = updates.type;
+    if (updates.name) dbUpdates.name = updates.name;
     if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
     if (updates.currency) dbUpdates.currency = updates.currency;
     if (updates.category) dbUpdates.category = updates.category;
-    if (updates.description) dbUpdates.description = updates.description;
     if (updates.date) dbUpdates.date = updates.date;
-    if (updates.paymentMethod) dbUpdates.payment_method = updates.paymentMethod; // ✅
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
 
-    const { data, error } = await supabase.from('transactions').update(dbUpdates).eq('id', id).select().single();
-    if (error) throw error;
-    if (data) setTransactions(prev => prev.map(t => t.id === id ? data : t));
+    try {
+      const { data, error } = await supabase.from('transactions').update(dbUpdates).eq('id', id).eq('user_id', user?.id).select().single();
+      if (error) throw error;
+
+      if (data) {
+        const updatedTransaction: Transaction = {
+          id: data.id,
+          type: data.type,
+          name: data.name,
+          amount: data.amount,
+          currency: data.currency,
+          category: data.category,
+          date: data.date,
+          notes: data.notes,
+          user_id: data.user_id,
+        };
+        setTransactions(prev => prev.map(t => (t.id === id ? updatedTransaction : t)));
+        localStorage.setItem('transactions', JSON.stringify(transactions.map(t => (t.id === id ? updatedTransaction : t))));
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
   const deleteTransaction = async (id: string) => {
-    await supabase.from('transactions').delete().eq('id', id);
-    setTransactions(prev => prev.filter(t => t.id !== id));
+    try {
+      const { error } = await supabase.from('transactions').delete().eq('id', id).eq('user_id', user?.id);
+      if (error) throw error;
+      setTransactions(prev => prev.filter(t => t.id !== id));
+      localStorage.setItem('transactions', JSON.stringify(transactions.filter(t => t.id !== id)));
+    } catch (error) {
+      throw error;
+    }
   };
 
+  // Derived Calculations
+  const totalExpenses = useMemo(() => transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0), [transactions]);
+  const totalIncome = useMemo(() => transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0), [transactions]);
+
+  useEffect(() => {
+    fetchTransactions();
+  }, [user, fetchTransactions]);
+
   return (
-    <FinanceContext.Provider value={{ transactions, loading, addTransaction, updateTransaction, deleteTransaction }}>
+    <FinanceContext.Provider value={{ transactions, loading, totalExpenses, totalIncome, addTransaction, updateTransaction, deleteTransaction, fetchTransactions }}>
       {children}
     </FinanceContext.Provider>
   );
@@ -123,6 +177,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
 export const useFinance = () => {
   const context = useContext(FinanceContext);
-  if (!context) throw new Error('useFinance must be used within a FinanceProvider');
+  if (context === undefined) {
+    throw new Error('useFinance must be used within a FinanceProvider');
+  }
   return context;
 };

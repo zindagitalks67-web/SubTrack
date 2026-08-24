@@ -5,13 +5,13 @@ import { useAuth } from './AuthContext';
 export interface Bill {
   id: string;
   name: string;
-  provider?: string;
+  provider: string;
   amount: number;
   currency: string;
   dueDate: string;
   category: string;
-  autoPay: boolean;
   paid: boolean;
+  paymentMethod?: string;
   notes?: string;
   user_id?: string;
 }
@@ -19,9 +19,11 @@ export interface Bill {
 interface BillsContextType {
   bills: Bill[];
   loading: boolean;
-  addBill: (bill: Omit<Bill, 'id'>) => Promise<void>;
+  addBill: (bill: Omit<Bill, 'id' | 'user_id'>) => Promise<void>;
   updateBill: (id: string, updates: Partial<Bill>) => Promise<void>;
   deleteBill: (id: string) => Promise<void>;
+  markAsPaid: (id: string) => Promise<void>;
+  fetchBills: () => Promise<void>;
 }
 
 const BillsContext = createContext<BillsContextType | undefined>(undefined);
@@ -32,40 +34,151 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [loading, setLoading] = useState(true);
 
   const fetchBills = useCallback(async () => {
-    if (!user) { setBills([]); setLoading(false); return; }
+    if (!user) {
+      setBills([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { data, error } = await supabase.from('bills').select('*').eq('user_id', user.id);
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('bills')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('due_date', { ascending: true });
+
       if (error) throw error;
-      setBills(data || []);
+
+      // Normalize snake_case to camelCase
+      const normalized = (data || []).map((bill: any) => ({
+        id: bill.id,
+        name: bill.name,
+        provider: bill.provider || '',
+        amount: bill.amount ?? 0,
+        currency: bill.currency || 'USD',
+        dueDate: bill.due_date || bill.dueDate || '',
+        category: bill.category || 'Other',
+        paid: bill.paid ?? false,
+        paymentMethod: bill.payment_method || '',
+        notes: bill.notes || '',
+        user_id: bill.user_id,
+      }));
+
+      setBills(normalized);
+      localStorage.setItem('bills', JSON.stringify(normalized));
     } catch (error) {
-      console.error('Error fetching bills:', error);
+      // Fallback to local storage
+      const localData = localStorage.getItem('bills');
+      if (localData) {
+        try { setBills(JSON.parse(localData)); } catch (e) { setBills([]); }
+      }
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  useEffect(() => { fetchBills(); }, [user, fetchBills]);
+  const addBill = async (bill: Omit<Bill, 'id' | 'user_id'>) => {
+    if (!user) throw new Error('User not authenticated');
+    
+    const dbBill = {
+      name: bill.name,
+      provider: bill.provider,
+      amount: bill.amount,
+      currency: bill.currency,
+      due_date: bill.dueDate,
+      category: bill.category,
+      paid: bill.paid,
+      payment_method: bill.paymentMethod || '',
+      notes: bill.notes || '',
+      user_id: user.id,
+    };
 
-  const addBill = async (bill: Omit<Bill, 'id'>) => {
-    if (!user) throw new Error('Not authenticated');
-    const { data, error } = await supabase.from('bills').insert([{ ...bill, user_id: user.id }]).select().single();
-    if (error) throw error;
-    setBills(prev => [data, ...prev]);
+    try {
+      const { data, error } = await supabase.from('bills').insert([dbBill]).select().single();
+      if (error) throw error;
+
+      if (data) {
+        const newBill: Bill = {
+          id: data.id,
+          name: data.name,
+          provider: data.provider,
+          amount: data.amount,
+          currency: data.currency,
+          dueDate: data.due_date,
+          category: data.category,
+          paid: data.paid,
+          paymentMethod: data.payment_method,
+          notes: data.notes,
+          user_id: data.user_id,
+        };
+        setBills(prev => [newBill, ...prev]);
+        localStorage.setItem('bills', JSON.stringify([newBill, ...bills]));
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
   const updateBill = async (id: string, updates: Partial<Bill>) => {
-    const { data, error } = await supabase.from('bills').update(updates).eq('id', id).select().single();
-    if (error) throw error;
-    setBills(prev => prev.map(b => b.id === id ? data : b));
+    const dbUpdates: any = {};
+    if (updates.name) dbUpdates.name = updates.name;
+    if (updates.provider !== undefined) dbUpdates.provider = updates.provider;
+    if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+    if (updates.currency) dbUpdates.currency = updates.currency;
+    if (updates.dueDate) dbUpdates.due_date = updates.dueDate;
+    if (updates.category) dbUpdates.category = updates.category;
+    if (updates.paid !== undefined) dbUpdates.paid = updates.paid;
+    if (updates.paymentMethod !== undefined) dbUpdates.payment_method = updates.paymentMethod;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+
+    try {
+      const { data, error } = await supabase.from('bills').update(dbUpdates).eq('id', id).eq('user_id', user?.id).select().single();
+      if (error) throw error;
+
+      if (data) {
+        const updatedBill: Bill = {
+          id: data.id,
+          name: data.name,
+          provider: data.provider,
+          amount: data.amount,
+          currency: data.currency,
+          dueDate: data.due_date,
+          category: data.category,
+          paid: data.paid,
+          paymentMethod: data.payment_method,
+          notes: data.notes,
+          user_id: data.user_id,
+        };
+        setBills(prev => prev.map(b => (b.id === id ? updatedBill : b)));
+        localStorage.setItem('bills', JSON.stringify(bills.map(b => (b.id === id ? updatedBill : b))));
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const markAsPaid = async (id: string) => {
+    await updateBill(id, { paid: true });
   };
 
   const deleteBill = async (id: string) => {
-    await supabase.from('bills').delete().eq('id', id);
-    setBills(prev => prev.filter(b => b.id !== id));
+    try {
+      const { error } = await supabase.from('bills').delete().eq('id', id).eq('user_id', user?.id);
+      if (error) throw error;
+      setBills(prev => prev.filter(b => b.id !== id));
+      localStorage.setItem('bills', JSON.stringify(bills.filter(b => b.id !== id)));
+    } catch (error) {
+      throw error;
+    }
   };
 
+  useEffect(() => {
+    fetchBills();
+  }, [user, fetchBills]);
+
   return (
-    <BillsContext.Provider value={{ bills, loading, addBill, updateBill, deleteBill }}>
+    <BillsContext.Provider value={{ bills, loading, addBill, updateBill, deleteBill, markAsPaid, fetchBills }}>
       {children}
     </BillsContext.Provider>
   );
@@ -73,6 +186,8 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 export const useBills = () => {
   const context = useContext(BillsContext);
-  if (!context) throw new Error('useBills must be used within a BillsProvider');
+  if (context === undefined) {
+    throw new Error('useBills must be used within a BillsProvider');
+  }
   return context;
 };

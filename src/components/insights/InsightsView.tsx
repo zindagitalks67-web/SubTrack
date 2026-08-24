@@ -1,69 +1,139 @@
 import { useMemo } from 'react';
-import { Sparkles, AlertTriangle, TrendingUp, DollarSign, CalendarClock, PiggyBank } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Sparkles, TrendingUp, AlertTriangle, CheckCircle2, CalendarClock } from 'lucide-react';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { useBills } from '@/context/BillsContext';
 import { useFinance } from '@/context/FinanceContext';
-import { useBudget } from '@/context/BudgetContext';
 import { Header } from '@/components/common/Header';
 import { GlassCard } from '@/components/common/GlassCard';
-import { daysUntil } from '@/utils/dateHelpers';
 
 export function InsightsView() {
-  const { t } = useTranslation();
   const { subscriptions } = useSubscriptions();
   const { bills } = useBills();
   const { transactions } = useFinance();
-  const { monthlyBudget } = useBudget();
 
-  const insights = useMemo(() => {
-    const list: { id: string; icon: any; type: string; title: string; message: string }[] = [];
-    const activeSubs = subscriptions.filter(s => s.active);
-    const totalSubsCost = activeSubs.reduce((sum, s) => sum + s.cost, 0);
-    const renewSoonCount = activeSubs.filter(s => s.nextRenewalDate && daysUntil(s.nextRenewalDate) <= 7).length;
+  // ✅ Insight 1: Recurring Commitments
+  const totalRecurring = useMemo(() => {
+    const subs = subscriptions.filter(s => s.active).reduce((sum, s) => {
+      if (s.billingCycle === 'yearly') return sum + s.cost / 12;
+      if (s.billingCycle === 'weekly') return sum + s.cost * 4.33;
+      return sum + s.cost;
+    }, 0);
+    const billTotal = bills.reduce((sum, b) => sum + b.amount, 0);
+    return subs + billTotal;
+  }, [subscriptions, bills]);
 
-    if (activeSubs.length > 0) 
-      list.push({ id: 'subs', icon: DollarSign, type: 'info', title: t('subscriptions'), message: `${activeSubs.length} active - $${totalSubsCost.toFixed(2)}/mo` });
-    if (renewSoonCount > 0) 
-      list.push({ id: 'renew', icon: CalendarClock, type: 'warning', title: t('renewals'), message: `${renewSoonCount} renewing soon` });
+  // ✅ Insight 2: Upcoming Renewals
+  const upcomingRenewals = useMemo(() => {
+    const now = new Date();
+    const sevenDaysLater = new Date(now);
+    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+    return subscriptions.filter(s => {
+      if (!s.nextRenewalDate) return false;
+      const renewal = new Date(s.nextRenewalDate);
+      return renewal >= now && renewal <= sevenDaysLater;
+    });
+  }, [subscriptions]);
 
-    const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-    const totalSpent = totalSubsCost + bills.reduce((sum, b) => sum + b.amount, 0) + totalExpenses;
-    const remaining = monthlyBudget - totalSpent;
+  // ✅ Insight 3: Overdue Bills
+  const overdueBills = useMemo(() => {
+    return bills.filter(b => !b.paid && new Date(b.dueDate) < new Date());
+  }, [bills]);
 
-    if (remaining < 0) 
-      list.push({ id: 'over', icon: AlertTriangle, type: 'warning', title: t('overBudget'), message: `$${Math.abs(remaining).toFixed(2)} over` });
-    else 
-      list.push({ id: 'left', icon: PiggyBank, type: 'success', title: t('remaining'), message: `$${remaining.toFixed(2)} left` });
-
-    return list;
-  }, [subscriptions, bills, transactions, monthlyBudget, t]);
+  // ✅ Insight 4: Total Yearly Spending
+  const totalYearlySpending = useMemo(() => {
+    const subsYearly = subscriptions.filter(s => s.active).reduce((sum, s) => {
+      if (s.billingCycle === 'monthly') return sum + s.cost * 12;
+      if (s.billingCycle === 'weekly') return sum + s.cost * 52;
+      return sum + s.cost;
+    }, 0);
+    const billsYearly = bills.reduce((sum, b) => sum + b.amount * 12, 0);
+    return subsYearly + billsYearly;
+  }, [subscriptions, bills]);
 
   return (
     <div className="animate-fade-in space-y-4">
-      <Header title={t('insights')} subtitle={t('aiAnalysis')} icon={Sparkles} />
-      {insights.length === 0 ? (
-        <GlassCard className="p-6 text-center">
-          <Sparkles className="w-8 h-8 mx-auto mb-2" />
-          <p>{t('noInsights')}</p>
-        </GlassCard>
-      ) : (
-        <div className="space-y-3">
-          {insights.map((insight) => (
-            <GlassCard key={insight.id} className="p-4">
-              <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${insight.type === 'warning' ? 'bg-warning/15 text-warning' : insight.type === 'success' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-brand-blue/15 text-brand-blue'}`}>
-                  <insight.icon className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{insight.title}</p>
-                  <p className="text-xs text-content-secondary">{insight.message}</p>
-                </div>
-              </div>
-            </GlassCard>
-          ))}
+      <Header title="AI Insights" subtitle="Smart financial recommendations" icon={Sparkles} />
+
+      {/* Hero Insight */}
+      <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-r from-purple-600 to-indigo-600 shadow-glow">
+        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+        <div className="relative">
+          <Sparkles className="w-6 h-6 text-white mb-2" />
+          <p className="text-xs text-white/80">Your monthly recurring commitments</p>
+          <p className="text-3xl font-bold text-white mt-1">${totalRecurring.toFixed(2)}</p>
+          <p className="text-xs text-white/70 mt-2">
+            This includes subscriptions and bills.
+          </p>
         </div>
-      )}
+      </div>
+
+      {/* Insight Cards */}
+      <div className="space-y-3">
+        {/* Upcoming Renewals */}
+        <GlassCard className="p-4 border-blue-500/20">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center shrink-0">
+              <CalendarClock className="w-4 h-4 text-blue-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Renewals this week</p>
+              <p className="text-xs text-content-secondary mt-1">
+                {upcomingRenewals.length > 0 
+                  ? `You have ${upcomingRenewals.length} subscription${upcomingRenewals.length > 1 ? 's' : ''} renewing soon (${upcomingRenewals.map(s => s.name).join(', ')}).`
+                  : 'No subscriptions renewing this week. Great!'}
+              </p>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Overdue Bills */}
+        <GlassCard className="p-4 border-red-500/20">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Overdue bills</p>
+              <p className="text-xs text-content-secondary mt-1">
+                {overdueBills.length > 0 
+                  ? `You have ${overdueBills.length} overdue bill${overdueBills.length > 1 ? 's' : ''}! Please pay them to avoid late fees.`
+                  : 'You have no overdue bills. Excellent job!'}
+              </p>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Yearly Spending */}
+        <GlassCard className="p-4 border-green-500/20">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-4 h-4 text-green-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Yearly projection</p>
+              <p className="text-xs text-content-secondary mt-1">
+                Your projected yearly spending is <b className="text-content-primary">${totalYearlySpending.toFixed(2)}</b>.
+                Consider reviewing subscriptions you don't use.
+              </p>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* Positive Savings */}
+        <GlassCard className="p-4 border-emerald-500/20">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Good financial health</p>
+              <p className="text-xs text-content-secondary mt-1">
+                You have <b className="text-content-primary">{subscriptions.filter(s => s.active).length}</b> active subscriptions and <b className="text-content-primary">{bills.filter(b => !b.paid).length}</b> unpaid bills. Keep it up!
+              </p>
+            </div>
+          </div>
+        </GlassCard>
+      </div>
     </div>
   );
 }

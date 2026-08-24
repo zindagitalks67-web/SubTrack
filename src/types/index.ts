@@ -5,7 +5,8 @@ export type SubscriptionTier = 'free' | 'premium_monthly' | 'premium_yearly' | '
 export type AlertKind = 'renewal' | 'price_hike';
 
 // ✅ Only one ViewKey (with 'finance' and 'bills' added)
-export type ViewKey = 'dashboard' | 'subscriptions' | 'bills' | 'finance' | 'analytics' | 'calendar' | 'budget' | 'insights' | 'family' | 'alerts' | 'settings';
+// src/types/index.ts
+export type ViewKey = 'dashboard' | 'bills' | 'subscriptions' | 'recurring' | 'finance' | 'analytics' | 'calendar' | 'budget' | 'insights' | 'alerts' | 'family' | 'settings' | 'admin';
 
 export interface PriceHistoryEntry {
   id: string;

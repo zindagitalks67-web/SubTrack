@@ -1,56 +1,121 @@
-import { useMemo, useState } from 'react';
-import { Wallet, AlertTriangle, Target } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { useState } from 'react';
+import { Target, Wallet, TrendingUp, CheckCircle2, AlertTriangle, Pencil } from 'lucide-react';
+import { useBudget } from '@/context/BudgetContext';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { useBills } from '@/context/BillsContext';
 import { useFinance } from '@/context/FinanceContext';
-import { useBudget } from '@/context/BudgetContext';
 import { Header } from '@/components/common/Header';
 import { GlassCard } from '@/components/common/GlassCard';
 
 export function BudgetView() {
-  const { t } = useTranslation();
-  const { monthly } = useSubscriptions();
+  const { monthlyBudget, updateBudget } = useBudget();
+  const { subscriptions } = useSubscriptions();
   const { bills } = useBills();
   const { transactions } = useFinance();
-  const { monthlyBudget, setMonthlyBudget } = useBudget();
+
+  const [editMode, setEditMode] = useState(false);
   const [newBudget, setNewBudget] = useState(monthlyBudget.toString());
 
-  const totalBills = useMemo(() => bills.reduce((sum, b) => sum + b.amount, 0), [bills]);
-  const totalExpenses = useMemo(() => transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0), [transactions]);
+  // ✅ Calculate Total Monthly Spent from all contexts
+  const totalSubsMonthly = subscriptions.filter(s => s.active).reduce((sum, s) => {
+    if (s.billingCycle === 'yearly') return sum + s.cost / 12;
+    if (s.billingCycle === 'weekly') return sum + s.cost * 4.33;
+    return sum + s.cost;
+  }, 0);
 
-  const totalSpent = monthly + totalBills + totalExpenses;
+  const totalBillsMonthly = bills.reduce((sum, b) => sum + b.amount, 0);
+
+  const totalExpensesMonthly = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+
+  const totalSpent = totalSubsMonthly + totalBillsMonthly + totalExpensesMonthly;
+
   const remaining = monthlyBudget - totalSpent;
-  const percentUsed = monthlyBudget > 0 ? Math.min((totalSpent / monthlyBudget) * 100, 100) : 0;
-  const isOverBudget = totalSpent > monthlyBudget;
+  const percentage = monthlyBudget > 0 ? (totalSpent / monthlyBudget) * 100 : 0;
+  const isOverLimit = remaining < 0;
+  const isWarning = percentage >= 80 && percentage < 100;
 
-  const handleSaveBudget = () => setMonthlyBudget(parseFloat(newBudget) || 0);
+  const handleSaveBudget = async () => {
+    const amount = parseFloat(newBudget) || 0;
+    await updateBudget(amount);
+    setEditMode(false);
+  };
+
+  const currency = 'USD'; // Aap currency dynamic bana sakte ho profile se, abhi hardcode kiya hai
 
   return (
     <div className="animate-fade-in space-y-4">
-      <Header title={t('budget')} subtitle={`${t('remaining')}: $${remaining.toFixed(2)}`} icon={Target} />
+      <Header title="Budget" subtitle="Track your monthly spending goal" icon={Target} />
 
-      <GlassCard className="p-4">
-        <p className="text-sm font-semibold text-content-primary">{t('monthlyBudget')}</p>
-        <div className="flex gap-2 mt-2">
-          <input type="number" value={newBudget} onChange={(e) => setNewBudget(e.target.value)} className="glass-input flex-1 px-3 py-2 text-sm" />
-          <button onClick={handleSaveBudget} className="btn-primary px-4 py-2 text-sm">{t('save')}</button>
+      {/* Budget Setting Card */}
+      <GlassCard>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-content-primary text-sm flex items-center gap-2">
+            <Wallet className="w-4 h-4 text-brand-blue" /> Monthly Budget
+          </h3>
+          <button onClick={() => setEditMode(!editMode)} className="p-2 hover:bg-white/10 rounded-lg text-content-secondary">
+            {editMode ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Pencil className="w-4 h-4" />}
+          </button>
+        </div>
+        {editMode ? (
+          <div className="flex gap-2">
+            <input
+              type="number"
+              className="glass-input flex-1 px-3 py-2 text-lg font-bold"
+              value={newBudget}
+              onChange={(e) => setNewBudget(e.target.value)}
+            />
+            <button onClick={handleSaveBudget} className="btn-primary px-4 py-2 text-sm">Save</button>
+          </div>
+        ) : (
+          <p className="text-3xl font-bold text-content-primary">{currency} {monthlyBudget.toFixed(2)}</p>
+        )}
+      </GlassCard>
+
+      {/* Progress Bar */}
+      <GlassCard>
+        <div className="mb-2 flex justify-between text-sm">
+          <span className="text-content-secondary">Spent</span>
+          <span className="font-semibold text-content-primary">{currency} {totalSpent.toFixed(2)}</span>
+        </div>
+        <div className="h-4 bg-gray-200/50 dark:bg-gray-700/50 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${
+              isOverLimit ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'
+            }`}
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
+        <div className="mt-2 flex justify-between text-xs text-content-muted">
+          <span>{percentage.toFixed(0)}% used</span>
+          <span>{currency} {remaining < 0 ? 0 : remaining.toFixed(2)} remaining</span>
         </div>
       </GlassCard>
 
-      <GlassCard className="p-4">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-sm font-semibold">{t('currentSpending')}</h3>
-          <span className={`text-xs ${isOverBudget ? 'text-danger' : 'text-emerald-400'}`}>
-            {isOverBudget ? t('overBudget') : t('onTrack')}
-          </span>
+      {/* Alerts */}
+      {isOverLimit && (
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
+          <p className="text-sm text-red-500 font-medium">
+            You have exceeded your monthly budget by {currency} {Math.abs(remaining).toFixed(2)}!
+          </p>
         </div>
-        <p className="text-3xl font-bold">${totalSpent.toFixed(2)}</p>
-        <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full mt-4">
-          <div className={`h-2 rounded-full ${isOverBudget ? 'bg-danger' : percentUsed > 80 ? 'bg-warning' : 'bg-emerald-500'}`} style={{ width: `${percentUsed}%` }} />
+      )}
+      {isWarning && !isOverLimit && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+          <p className="text-sm text-amber-500 font-medium">
+            Warning! You have used {percentage.toFixed(0)}% of your budget.
+          </p>
         </div>
-        <p className="text-[11px] text-content-muted mt-1">{percentUsed.toFixed(0)}% {t('remaining') || 'used'}</p>
-      </GlassCard>
+      )}
+      {!isWarning && !isOverLimit && monthlyBudget > 0 && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+          <p className="text-sm text-emerald-500 font-medium">
+            Great job! You are within your budget.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

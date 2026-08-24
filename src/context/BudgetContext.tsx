@@ -5,42 +5,75 @@ import { useAuth } from './AuthContext';
 interface BudgetContextType {
   monthlyBudget: number;
   loading: boolean;
-  setMonthlyBudget: (amount: number) => Promise<void>;
+  updateBudget: (amount: number) => Promise<void>;
 }
 
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
 
 export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const [monthlyBudget, setMonthlyBudgetState] = useState<number>(3000);
+  const [monthlyBudget, setMonthlyBudget] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchBudget = async () => {
-      if (!user) return;
-      const { data } = await supabase.from('budgets').select('monthly_budget').eq('user_id', user.id).single();
-      if (data) setMonthlyBudgetState(data.monthly_budget);
+  // Fetch Budget from Supabase / LocalStorage
+  const fetchBudget = useCallback(async () => {
+    if (!user) {
+      setMonthlyBudget(0);
       setLoading(false);
-    };
-    fetchBudget();
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('budgets')
+        .select('amount')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        setMonthlyBudget(data.amount || 0);
+      } else {
+        // Fallback to LocalStorage
+        const localBudget = localStorage.getItem(`budget_${user.id}`);
+        setMonthlyBudget(localBudget ? parseFloat(localBudget) : 0);
+      }
+    } catch (error) {
+      console.error('Error fetching budget:', error);
+      const localBudget = localStorage.getItem(`budget_${user.id}`);
+      setMonthlyBudget(localBudget ? parseFloat(localBudget) : 0);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
-  const setMonthlyBudget = async (amount: number) => {
-    setMonthlyBudgetState(amount);
+  // Update Budget
+  const updateBudget = async (amount: number) => {
     if (!user) return;
+    setMonthlyBudget(amount);
 
-    // Check if a budget row exists
-    const { data } = await supabase.from('budgets').select('id').eq('user_id', user.id).single();
+    // Optimistic update
+    try {
+      const { error } = await supabase
+        .from('budgets')
+        .upsert({ user_id: user.id, amount: amount });
 
-    if (data) {
-      await supabase.from('budgets').update({ monthly_budget: amount }).eq('id', data.id);
-    } else {
-      await supabase.from('budgets').insert({ user_id: user.id, monthly_budget: amount });
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error updating budget:', error);
     }
+
+    // Always save to LocalStorage for quick access
+    localStorage.setItem(`budget_${user.id}`, amount.toString());
   };
 
+  useEffect(() => {
+    fetchBudget();
+  }, [fetchBudget]);
+
   return (
-    <BudgetContext.Provider value={{ monthlyBudget, loading, setMonthlyBudget }}>
+    <BudgetContext.Provider value={{ monthlyBudget, loading, updateBudget }}>
       {children}
     </BudgetContext.Provider>
   );
@@ -48,6 +81,8 @@ export const BudgetProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
 export const useBudget = () => {
   const context = useContext(BudgetContext);
-  if (!context) throw new Error('useBudget must be used within a BudgetProvider');
+  if (context === undefined) {
+    throw new Error('useBudget must be used within a BudgetProvider');
+  }
   return context;
 };

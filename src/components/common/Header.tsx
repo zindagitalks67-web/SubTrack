@@ -1,38 +1,31 @@
-import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
   icon?: LucideIcon;
-  actions?: ReactNode;
-  showLogo?: boolean; // Naya option custom logo control karne ke liye
+  actions?: React.ReactNode;
 }
 
-export function Header({ title, subtitle, icon: Icon, actions, showLogo = true }: HeaderProps) {
+export function Header({ title, subtitle, icon: Icon, actions }: HeaderProps) {
   return (
-    <div className="flex items-start justify-between gap-3 mb-4">
-      <div className="flex items-center gap-3 min-w-0">
-        {/* Agar Lucide Icon pass kiya gaya hai toh wo dikhega, warna Custom 3D Logo dikhega */}
-        {Icon ? (
-          <div className="w-10 h-10 rounded-xl bg-brand-gradient-soft border border-white/10 flex items-center justify-center shrink-0">
-            <Icon className="w-5 h-5 text-brand-purple" />
-          </div>
-        ) : showLogo ? (
-          <img 
-            src="/icon.png" 
-            alt="SubTrack Logo" 
-            className="w-10 h-10 rounded-xl object-cover shrink-0 shadow-md border border-white/10" 
-          />
-        ) : null}
-
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-content-primary truncate">{title}</h1>
-          {subtitle && <p className="text-sm text-content-secondary truncate">{subtitle}</p>}
+    <div className="flex items-center gap-3 mb-4">
+      {Icon && (
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-500 via-fuchsia-500 to-indigo-500 flex items-center justify-center shadow-lg shadow-purple-500/30 border border-white/20 shrink-0">
+          <Icon className="w-6 h-6 text-white" />
         </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <h1 className="text-2xl font-bold tracking-tight text-content-primary">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="text-xs text-content-secondary truncate">
+            {subtitle}
+          </p>
+        )}
       </div>
-
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {actions && <div className="shrink-0">{actions}</div>}
     </div>
   );
 }
