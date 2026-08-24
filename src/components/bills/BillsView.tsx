@@ -33,13 +33,18 @@ export function BillsView() {
     setShowForm(true);
   };
 
+  // ✅ HandleSubmit with error handling (Try-Catch)
   const handleSubmit = async (data: Omit<Bill, 'id' | 'user_id'>) => {
-    if (editingBill) {
-      await updateBill(editingBill.id, data);
-    } else {
-      await addBill(data);
+    try {
+      if (editingBill) {
+        await updateBill(editingBill.id, data);
+      } else {
+        await addBill(data);
+      }
+      setShowForm(false);
+    } catch (error: any) {
+      alert("Error saving bill: " + error.message);
     }
-    setShowForm(false);
   };
 
   return (
@@ -74,7 +79,7 @@ export function BillsView() {
           {[
             { key: 'all', label: t('all') },
             { key: 'upcoming', label: t('upcoming') },
-            { key: 'paid', label: 'Paid' } // 👈 Paid label yahan hardcode kiya (t('paid') abhi add nahi hai translations mein)
+            { key: 'paid', label: 'Paid' }
           ].map((f) => (
             <button
               key={f.key}
@@ -156,10 +161,14 @@ function BillForm({ initialData, onClose, onSubmit }: { initialData: Bill | null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit({
-      name, provider, amount: parseFloat(amount) || 0, currency, dueDate, category, paid,
-    });
-    onClose();
+    try {
+      await onSubmit({
+        name, provider, amount: parseFloat(amount) || 0, currency, dueDate, category, paid,
+      });
+      onClose();
+    } catch (error) {
+      // Error already alerted in parent, so we don't close the modal
+    }
   };
 
   return (

@@ -50,7 +50,6 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (error) throw error;
 
-      // Normalize snake_case to camelCase
       const normalized = (data || []).map((bill: any) => ({
         id: bill.id,
         name: bill.name,
@@ -68,7 +67,6 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setBills(normalized);
       localStorage.setItem('bills', JSON.stringify(normalized));
     } catch (error) {
-      // Fallback to local storage
       const localData = localStorage.getItem('bills');
       if (localData) {
         try { setBills(JSON.parse(localData)); } catch (e) { setBills([]); }
@@ -78,6 +76,7 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [user]);
 
+  // ✅ Complete addBill with error handling
   const addBill = async (bill: Omit<Bill, 'id' | 'user_id'>) => {
     if (!user) throw new Error('User not authenticated');
     
@@ -112,10 +111,15 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           notes: data.notes,
           user_id: data.user_id,
         };
-        setBills(prev => [newBill, ...prev]);
-        localStorage.setItem('bills', JSON.stringify([newBill, ...bills]));
+        
+        setBills(prev => {
+          const newBills = [newBill, ...prev];
+          localStorage.setItem('bills', JSON.stringify(newBills));
+          return newBills;
+        });
       }
     } catch (error) {
+      console.error('Add bill error:', error);
       throw error;
     }
   };

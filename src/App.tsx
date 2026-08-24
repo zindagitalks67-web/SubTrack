@@ -48,7 +48,7 @@ import { AnalyticsView } from '@/components/analytics/AnalyticsView';
 import { CalendarView } from '@/components/calendar/CalendarView';
 import { InsightsView } from '@/components/insights/InsightsView';
 
-// ✅ getAlerts function defined
+// ✅ getAlerts function
 const getAlerts = (subscriptions: any[]): any[] => {
   const now = new Date();
   const sevenDaysLater = new Date(now);
