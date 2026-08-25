@@ -4,39 +4,21 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { ToastProvider } from '@/context/ToastContext';
 import { LanguageProvider, useLanguage } from '@/context/LanguageContext';
-// ✅ Admin Imports
 import { AdminProvider } from '@/context/AdminContext';
 import { AdminView } from '@/components/Admin/AdminView';
-// ✅ Bills Imports
 import { BillsProvider } from '@/context/BillsContext';
 import { BillsView } from '@/components/bills/BillsView';
-// ✅ Finance Imports
 import { FinanceProvider } from '@/context/FinanceContext';
 import { FinanceView } from '@/components/finance/FinanceView';
-// ✅ Budget Imports
 import { BudgetProvider } from '@/context/BudgetContext';
 import { BudgetView } from '@/components/budget/BudgetView';
-// ✅ Recurring Imports
 import { RecurringView } from '@/components/recurring/RecurringView';
-// ✅ Subscription Imports
 import { SubscriptionProvider, useSubscriptions } from '@/context/SubscriptionContext';
-import { 
-  LayoutDashboard, 
-  CreditCard, 
-  Bell, 
-  Users, 
-  Settings as SettingsIcon, 
-  Wallet, 
-  BarChart3,
-  CalendarDays,
-  Target,
-  Sparkles,
-  ShieldCheck,
-  RefreshCw 
-} from 'lucide-react';
+import { LayoutDashboard, CreditCard, BarChart3, CalendarDays, Menu } from 'lucide-react';
 import type { ViewKey } from '@/types';
 import { ToastContainer } from '@/components/common/ToastContainer';
 import { BottomNav, type NavItem } from '@/components/common/BottomNav';
+import { Sidebar } from '@/components/common/Sidebar';
 import { PaywallModal } from '@/components/common/PaywallModal';
 import { SubscriptionForm } from '@/components/subscriptions/SubscriptionForm';
 import { DashboardView } from '@/components/dashboard/DashboardView';
@@ -48,7 +30,6 @@ import { AnalyticsView } from '@/components/analytics/AnalyticsView';
 import { CalendarView } from '@/components/calendar/CalendarView';
 import { InsightsView } from '@/components/insights/InsightsView';
 
-// ✅ getAlerts function
 const getAlerts = (subscriptions: any[]): any[] => {
   const now = new Date();
   const sevenDaysLater = new Date(now);
@@ -61,20 +42,11 @@ const getAlerts = (subscriptions: any[]): any[] => {
   });
 };
 
-// ✅ Dynamic Nav Items using translation function
-const getNavItems = (t: (key: any) => string): NavItem[] => [
+const getCoreNavItems = (t: (key: any) => string): NavItem[] => [
   { key: 'dashboard', label: t('home'), icon: LayoutDashboard },
-  { key: 'bills', label: t('bills'), icon: CalendarDays },
   { key: 'subscriptions', label: t('subs'), icon: CreditCard },
-  { key: 'recurring', label: t('recurring'), icon: RefreshCw },
-  { key: 'finance', label: t('finance'), icon: Wallet },
+  { key: 'bills', label: t('bills'), icon: CalendarDays },
   { key: 'analytics', label: t('analytics'), icon: BarChart3 },
-  { key: 'calendar', label: t('calendar'), icon: CalendarDays },
-  { key: 'budget', label: t('budget'), icon: Target },
-  { key: 'insights', label: 'AI Insights', icon: Sparkles },
-  { key: 'alerts', label: t('alerts'), icon: Bell },
-  { key: 'family', label: t('family'), icon: Users },
-  { key: 'settings', label: t('settings'), icon: SettingsIcon },
 ];
 
 function AppShell() {
@@ -82,19 +54,15 @@ function AppShell() {
   const [view, setView] = useState<ViewKey>('dashboard');
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const { subscriptions, addSubscription, updateSubscription } = useSubscriptions();
   const { isAdmin } = useAuth(); 
   
   const alerts = getAlerts(subscriptions);
 
-  // ✅ Dynamic Nav Items using t()
-  const baseNavItems = getNavItems(t);
-  const navItems: NavItem[] = isAdmin 
-    ? [...baseNavItems, { key: 'admin', label: 'Admin', icon: ShieldCheck }] 
-    : baseNavItems;
-
-  const navWithBadges: NavItem[] = navItems.map((item) =>
+  const coreNavItems = getCoreNavItems(t);
+  const navWithBadges: NavItem[] = coreNavItems.map((item) =>
     item.key === 'alerts' ? { ...item, badge: alerts.length } : item,
   );
 
@@ -110,13 +78,20 @@ function AppShell() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Top Bar with Menu Button */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 flex items-center justify-between max-w-md mx-auto w-full">
+        <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-gray-100">
+          <Menu className="w-6 h-6 text-gray-700" />
+        </button>
+        <h1 className="text-lg font-bold text-gray-800">SubTrack</h1>
+        <div className="w-6" />
+      </div>
+
+      {/* Main Content */}
       <main className="flex-1 w-full max-w-md mx-auto px-4 pt-5 pb-28 safe-top">
-        {view === 'dashboard' && (
-          <DashboardView onNavigate={handleChange} onEditSubscription={openEditor} />
-        )}
-        {view === 'bills' && <BillsView />}
+        {view === 'dashboard' && <DashboardView onNavigate={handleChange} onEditSubscription={openEditor} />}
         {view === 'subscriptions' && <SubscriptionsView />}
-        {view === 'recurring' && <RecurringView />}
+        {view === 'bills' && <BillsView />}
         {view === 'finance' && <FinanceView />}
         {view === 'analytics' && <AnalyticsView />}
         {view === 'calendar' && <CalendarView />}
@@ -125,8 +100,11 @@ function AppShell() {
         {view === 'alerts' && <AlertsView />}
         {view === 'family' && <FamilyView />}
         {view === 'settings' && <SettingsView />}
+        {view === 'recurring' && <RecurringView />}
         {view === 'admin' && isAdmin && <AdminView />}
       </main>
+
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} active={view} onChange={handleChange} />
       <BottomNav items={navWithBadges} active={view} onChange={handleChange} />
       <PaywallModal />
       <ToastContainer />
@@ -136,11 +114,8 @@ function AppShell() {
           initialData={editing}
           onClose={() => setEditOpen(false)}
           onSubmit={async (data) => {
-            if (editing) {
-              await updateSubscription(editing.id, data);
-            } else {
-              await addSubscription(data);
-            }
+            if (editing) await updateSubscription(editing.id, data);
+            else await addSubscription(data);
             setEditOpen(false);
           }}
         />
@@ -154,37 +129,23 @@ export default function App() {
   const [isLogin, setIsLogin] = useState(true);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
-      </div>
-    );
+    return <div className="flex items-center justify-center min-h-screen bg-gray-100"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" /></div>;
   }
 
   if (!user) {
-    return isLogin ? (
-      <Login onToggle={() => setIsLogin(false)} />
-    ) : (
-      <Signup onToggle={() => setIsLogin(true)} />
-    );
+    return isLogin ? <Login onToggle={() => setIsLogin(false)} /> : <Signup onToggle={() => setIsLogin(true)} />;
   }
 
   return (
     <ToastProvider>
       <LanguageProvider>
-        {/* ✅ Providers Hierarchy: Admin -> Bills -> Finance -> Budget -> Subscription */}
         <AdminProvider>
           <BillsProvider>
             <FinanceProvider>
               <BudgetProvider>
                 <SubscriptionProvider>
                   <div className="min-h-screen bg-gray-50">
-                    <button
-                      onClick={signOut}
-                      className="fixed bottom-20 right-4 z-50 bg-red-500 text-white px-3 py-1 rounded-full text-xs shadow-lg"
-                    >
-                      Logout
-                    </button>
+                    <button onClick={signOut} className="fixed bottom-20 right-4 z-50 bg-red-500 text-white px-3 py-1 rounded-full text-xs shadow-lg">Logout</button>
                     <AppShell />
                   </div>
                 </SubscriptionProvider>

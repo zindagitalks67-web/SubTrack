@@ -1,81 +1,42 @@
-import { useMemo, useState } from 'react';
-import { Bell, CalendarClock, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { Bell, CalendarClock } from 'lucide-react';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
 import { EmptyState } from '@/components/common/EmptyState';
 import { GlassCard } from '@/components/common/GlassCard';
-import { CATEGORY_MAP } from '@/utils/constants';
-import { CategoryIcon } from '@/components/common/CategoryIcon';
-import { formatDate, daysUntil } from '@/utils/dateHelpers';
+import { useLanguage } from '@/context/LanguageContext';
 
 export function AlertsView() {
-  const { alerts, subscriptions, profile, updateProfile } = useSubscriptions();
-  const [filter, setFilter] = useState<string>('all');
-
-  // ✅ SAFETY: `alerts` agar undefined hua toh `[]` use karo
-  const safeAlerts = useMemo(() => alerts || [], [alerts]);
-  const safeSubscriptions = useMemo(() => subscriptions || [], [subscriptions]);
-
-  const filtered = useMemo(
-    () => (filter === 'all' ? safeAlerts : safeAlerts.filter((a: any) => a.kind === filter)),
-    [safeAlerts, filter],
-  );
-
-  const renewalCount = safeAlerts.filter((a: any) => a.kind === 'renewal').length;
-  const hikeCount = safeAlerts.filter((a: any) => a.kind === 'price_hike').length;
+  const { t } = useLanguage();
+  const { alerts } = useSubscriptions();
+  const [filter, setFilter] = useState<'all' | 'renewal' | 'price_hike'>('all');
+  const filtered = alerts.filter(a => filter === 'all' ? true : a.kind === filter);
 
   return (
     <div className="animate-fade-in space-y-4">
-      <Header title="Alerts" subtitle={`${safeAlerts.length} active alerts`} icon={Bell} />
-
-      {/* Reminder Setting */}
+      <Header title={t('alerts')} subtitle={`${alerts.length} ${t('activeAlerts')}`} icon={Bell} />
       <GlassCard>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-brand-blue/15 flex items-center justify-center">
-              <CalendarClock className="w-4 h-4 text-brand-blue" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-content-primary">Reminder window</p>
-              <p className="text-xs text-content-secondary">Notify before renewal</p>
-            </div>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">{t('reminderWindow')}</p>
+            <p className="text-xs">{t('notifyBefore')}</p>
           </div>
-          <div className="flex items-center gap-1.5">
-            {[1, 3, 7].map((d) => (
-              <button key={d} onClick={() => updateProfile({ reminderDays: d })} className="chip px-3 py-1.5 border transition-all">
-                {d}d
-              </button>
-            ))}
+          <div className="flex gap-2">
+            {[1, 3, 7].map(d => <button key={d} className="chip px-3 py-1.5 border">{d}d</button>)}
           </div>
         </div>
       </GlassCard>
-
-      {/* Filter Chips */}
-      <div className="flex items-center gap-2">
-        {[
-          { k: 'all', label: 'All', count: safeAlerts.length },
-          { k: 'renewal', label: 'Renewals', count: renewalCount },
-          { k: 'price_hike', label: 'Price hikes', count: hikeCount },
-        ].map((f) => (
-          <button key={f.k} onClick={() => setFilter(f.k)} className="chip px-3 py-1.5 border transition-all">
-            {f.label} ({f.count})
-          </button>
-        ))}
+      <div className="flex gap-2">
+        <button onClick={() => setFilter('all')} className={`chip px-4 py-2 border ${filter === 'all' ? 'bg-brand-purple/20' : ''}`}>{t('allLabel')} ({alerts.length})</button>
+        <button onClick={() => setFilter('renewal')} className={`chip px-4 py-2 border ${filter === 'renewal' ? 'bg-brand-purple/20' : ''}`}>{t('renewalsLabel')} ({alerts.filter(a => a.kind === 'renewal').length})</button>
+        <button onClick={() => setFilter('price_hike')} className={`chip px-4 py-2 border ${filter === 'price_hike' ? 'bg-brand-purple/20' : ''}`}>{t('priceHikesLabel')} ({alerts.filter(a => a.kind === 'price_hike').length})</button>
       </div>
-
-      {/* Alert List */}
-      {filtered.length === 0 ? (
-        <EmptyState icon={Bell} title="You are all caught up" description="No alerts match this filter." />
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((a: any) => (
-            <GlassCard key={a.id} className="p-3">
-              <p className="text-sm font-medium text-content-primary">{a.title}</p>
-              <p className="text-xs text-content-secondary mt-1">{a.message}</p>
-            </GlassCard>
-          ))}
-        </div>
-      )}
+      {filtered.length === 0 ? <EmptyState icon={Bell} title={t('allCaughtUp')} description={t('noData')} /> : filtered.map(alert => (
+        <GlassCard key={alert.id} className="p-3">
+          <p className="text-sm font-medium">{alert.title}</p>
+          <p className="text-xs mt-1">{alert.message}</p>
+        </GlassCard>
+      ))}
     </div>
   );
 }

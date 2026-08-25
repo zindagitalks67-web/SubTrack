@@ -11,15 +11,16 @@ body {
   color: #111827 !important;
 }
 
-/* 🛑 HATAYA: Ye aggressive rule ab sirf normal content ke liye hai */
-/* h1, h2, h3, h4, h5, h6, p, span, label, div { color: #111827 !important; } */
+/* ✅ GLOBAL FIX: Saare text ko dark black banao (except Paywall) */
+body h1, body h2, body h3, body h4, body h5, body h6, body p, body span, body label, body div {
+  color: #111827 !important;
+}
 
 .glass, .glass-card, .glass-nav {
   background-color: #ffffff !important;
   border-color: #e5e7eb !important;
 }
 
-/* Input fields force black text on white background */
 input, select, textarea {
   color: #000000 !important;
   background-color: #ffffff !important;
@@ -32,7 +33,6 @@ input::placeholder {
   -webkit-text-fill-color: #9ca3af !important;
 }
 
-/* Premium Button */
 .btn-primary {
   background: linear-gradient(to right, #7c3aed, #4f46e5) !important;
   color: white !important;
@@ -68,12 +68,11 @@ input::placeholder {
   box-shadow: 0 12px 30px -5px rgba(99, 102, 241, 0.5);
 }
 
-/* 🛑 FINAL FIX: Paywall Modal Force White Text on Dark Background */
+/* 🛑 PAYWALL SPECIFIC FIX: Sirf Paywall ke andar text white rahega */
 .paywall-modal-root,
 .paywall-modal-root h1,
 .paywall-modal-root h2,
 .paywall-modal-root h3,
-.paywall-modal-root h4,
 .paywall-modal-root p,
 .paywall-modal-root span,
 .paywall-modal-root label,

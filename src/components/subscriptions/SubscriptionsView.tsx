@@ -28,7 +28,7 @@ export function SubscriptionsView() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this subscription?')) {
+    if (confirm(t('confirmDelete'))) {
       deleteSubscription(id);
     }
   };
@@ -37,7 +37,7 @@ export function SubscriptionsView() {
     <div className="animate-fade-in space-y-4">
       <Header
         title={t('subs')}
-        subtitle={`${subscriptions.length} ${t('active')} services`}
+        subtitle={`${t('managing')} ${subscriptions.length} ${t('activeServices')}`}
         icon={Layers}
         actions={
           <button
@@ -55,7 +55,7 @@ export function SubscriptionsView() {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
           <input
             type="text"
-            placeholder={t('search')}
+            placeholder={t('searchSubscriptions')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="glass-input w-full pl-9 pr-4 py-2.5 text-sm"
@@ -66,13 +66,9 @@ export function SubscriptionsView() {
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`chip px-3 py-1.5 border transition-all ${
-                categoryFilter === cat
-                  ? 'border-brand-purple/60 bg-brand-gradient-soft text-content-primary'
-                  : 'border-white/10 bg-white/[0.03] text-content-secondary'
-              }`}
+              className={`chip px-3 py-1.5 border transition-all ${categoryFilter === cat ? 'border-brand-purple/60 bg-brand-gradient-soft text-content-primary' : 'border-white/10 bg-white/[0.03] text-content-secondary'}`}
             >
-              {cat}
+              {cat === 'All' ? t('all') : cat === 'Entertainment' ? t('entertainment') : cat === 'Music' ? t('music') : cat === 'Productivity' ? t('productivity') : cat === 'Cloud Storage' ? t('cloudStorage') : t('other')}
             </button>
           ))}
         </div>
@@ -92,29 +88,17 @@ export function SubscriptionsView() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((sub) => (
-            <SubscriptionCard
-              key={sub.id}
-              subscription={sub}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-            />
+            <SubscriptionCard key={sub.id} subscription={sub} onEdit={handleEdit} onDelete={handleDelete} />
           ))}
         </div>
       )}
 
       {showForm && (
-        <SubscriptionForm
-          initialData={editingSub}
-          onClose={() => setShowForm(false)}
-          onSubmit={async (data) => {
-            if (editingSub) {
-              await updateSubscription(editingSub.id, data);
-            } else {
-              await addSubscription(data);
-            }
+        <SubscriptionForm initialData={editingSub} onClose={() => setShowForm(false)} onSubmit={async (data) => {
+            if (editingSub) { await updateSubscription(editingSub.id, data); }
+            else { await addSubscription(data); }
             setShowForm(false);
-          }}
-        />
+          }} />
       )}
     </div>
   );

@@ -9,7 +9,7 @@ import { useLanguage } from '@/context/LanguageContext';
 
 export function BillsView() {
   const { t } = useLanguage();
-  const { bills, addBill, updateBill, deleteBill, markAsPaid, loading } = useBills();
+  const { bills, loading, addBill, updateBill, deleteBill, markAsPaid } = useBills();
   const [showForm, setShowForm] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [search, setSearch] = useState('');
@@ -33,25 +33,21 @@ export function BillsView() {
     setShowForm(true);
   };
 
-  // ✅ HandleSubmit with error handling (Try-Catch)
   const handleSubmit = async (data: Omit<Bill, 'id' | 'user_id'>) => {
-    try {
-      if (editingBill) {
-        await updateBill(editingBill.id, data);
-      } else {
-        await addBill(data);
-      }
-      setShowForm(false);
-    } catch (error: any) {
-      alert("Error saving bill: " + error.message);
-    }
+    if (editingBill) await updateBill(editingBill.id, data);
+    else await addBill(data);
+    setShowForm(false);
   };
+
+  if (loading) {
+    return <div className="p-4 text-center text-gray-500">{t('loading')}</div>;
+  }
 
   return (
     <div className="animate-fade-in space-y-4">
       <Header
         title={t('bills')}
-        subtitle={`${bills.filter(b => !b.paid).length} unpaid`}
+        subtitle={`${bills.filter(b => !b.paid).length} ${t('unpaid')}`}
         icon={Calendar}
         actions={
           <button
@@ -76,21 +72,17 @@ export function BillsView() {
           />
         </div>
         <div className="flex gap-2">
-          {[
-            { key: 'all', label: t('all') },
-            { key: 'upcoming', label: t('upcoming') },
-            { key: 'paid', label: 'Paid' }
-          ].map((f) => (
+          {['all', 'upcoming', 'paid'].map((f) => (
             <button
-              key={f.key}
-              onClick={() => setFilter(f.key as any)}
+              key={f}
+              onClick={() => setFilter(f as any)}
               className={`chip px-3 py-1.5 border transition-all capitalize ${
-                filter === f.key
+                filter === f
                   ? 'border-brand-blue/60 bg-brand-gradient-soft text-content-primary'
                   : 'border-white/10 bg-white/[0.03] text-content-secondary'
               }`}
             >
-              {f.label}
+              {f === 'all' ? t('all') : f === 'upcoming' ? t('upcoming') : t('paid')}
             </button>
           ))}
         </div>
@@ -101,11 +93,7 @@ export function BillsView() {
           icon={Calendar}
           title={t('noBills')}
           description={t('addBill')}
-          action={
-            <button onClick={openAdd} className="btn-primary text-sm">
-              <Plus className="w-4 h-4" /> {t('addBill')}
-            </button>
-          }
+          action={<button onClick={openAdd} className="btn-primary text-sm"><Plus className="w-4 h-4" /> {t('addBill')}</button>}
         />
       ) : (
         <div className="space-y-2">
@@ -115,7 +103,7 @@ export function BillsView() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-content-primary truncate">{bill.name}</p>
                   <p className="text-xs text-content-secondary">
-                    {bill.provider} · Due: {bill.dueDate}
+                    {bill.provider} · {t('dueDate')}: {bill.dueDate}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
@@ -161,14 +149,8 @@ function BillForm({ initialData, onClose, onSubmit }: { initialData: Bill | null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await onSubmit({
-        name, provider, amount: parseFloat(amount) || 0, currency, dueDate, category, paid,
-      });
-      onClose();
-    } catch (error) {
-      // Error already alerted in parent, so we don't close the modal
-    }
+    await onSubmit({ name, provider, amount: parseFloat(amount) || 0, currency, dueDate, category, paid });
+    onClose();
   };
 
   return (
@@ -183,14 +165,14 @@ function BillForm({ initialData, onClose, onSubmit }: { initialData: Bill | null
           <input type="number" step="0.01" className="glass-input w-full px-3.5 py-3 text-base" placeholder="100" value={amount} onChange={(e) => setAmount(e.target.value)} required />
         </label>
         <label className="block">
-          <span className="text-xs font-medium text-content-secondary mb-1.5 block">Currency</span>
+          <span className="text-xs font-medium text-content-secondary mb-1.5 block">{t('currency')}</span>
           <select className="glass-input w-full px-3.5 py-3 text-base" value={currency} onChange={(e) => setCurrency(e.target.value)}>
             {['USD', 'EUR', 'GBP', 'INR', 'JPY', 'CAD', 'AUD'].map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
       </div>
       <label className="block">
-        <span className="text-xs font-medium text-content-secondary mb-1.5 block">Due Date</span>
+        <span className="text-xs font-medium text-content-secondary mb-1.5 block">{t('dueDate')}</span>
         <input type="date" className="glass-input w-full px-3.5 py-3 text-base" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
       </label>
       <div className="flex gap-3 pt-2">

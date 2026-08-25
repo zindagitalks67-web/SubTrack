@@ -70,7 +70,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
     <div className="animate-fade-in space-y-4">
       <Header
         title={`Hi, ${profile.name.split(' ')[0]}`}
-        subtitle={`${TIER_LABELS[profile.tier as keyof typeof TIER_LABELS]} plan · ${activeCount} ${t('active')}`}
+        subtitle={`${TIER_LABELS[(profile.tier || 'free') as keyof typeof TIER_LABELS]} plan · ${activeCount} ${t('active')}`}
         icon={Wallet}
       />
 

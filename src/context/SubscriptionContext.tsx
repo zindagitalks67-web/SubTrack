@@ -47,10 +47,13 @@ interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // ✅ User aur updateProfile ko yahan se import karo
   const { user, updateProfile: updateAuthProfile } = useAuth();
+
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [family, setFamily] = useState<FamilyMember[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   
   const [paywall, setPaywall] = useState<PaywallState>({
     isOpen: false, isPaid: false,
@@ -64,21 +67,26 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     reminderDays: user?.user_metadata?.reminderDays || 3, tier: user?.user_metadata?.tier || 'free', email: user?.email || '',
   });
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
   useEffect(() => {
-    if (user) {
+    if (user && !isSyncing) {
       setProfile({
-        name: user?.user_metadata?.name || 'User', currency: user?.user_metadata?.currency || 'USD',
-        reminderDays: user?.user_metadata?.reminderDays || 3, tier: user?.user_metadata?.tier || 'free', email: user?.email || '',
+        name: user?.user_metadata?.name || 'User',
+        currency: user?.user_metadata?.currency || 'USD',
+        reminderDays: user?.user_metadata?.reminderDays || 3,
+        tier: user?.user_metadata?.tier || 'free',
+        email: user?.email || '',
       });
     }
-  }, [user]);
+  }, [user, isSyncing]);
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
-    setProfile(prev => ({ ...prev, ...updates }));
-    await updateAuthProfile(updates);
+    setIsSyncing(true); // Lock sync
+    setProfile(prev => ({ ...prev, ...updates })); // Pehle local update
+    await updateAuthProfile(updates); // Fir Supabase mein save
+    setIsSyncing(false); // Unlock
   }, [updateAuthProfile]);
-
-  const [alerts, setAlerts] = useState<Alert[]>([]);
 
   const fetchSubscriptions = useCallback(async () => {
     if (!user) { setSubscriptions([]); setLoading(false); return; }
@@ -94,8 +102,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         priceHistory: sub.price_history || [], user_id: sub.user_id,
       }));
       setSubscriptions(normalized);
-      
-      // ✅ FIX: Explicit return type `Alert` taaki `kind` sahi infer ho
       const mockAlerts: Alert[] = normalized.filter((s: Subscription) => s.active).map((s: Subscription): Alert => {
         const days = s.nextRenewalDate ? Math.ceil((new Date(s.nextRenewalDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 10;
         if (days <= 3) return { id: `alert-${s.id}`, kind: 'renewal', title: `${s.name} renewing soon`, message: `Renew in ${days}d`, date: s.nextRenewalDate || new Date().toISOString(), subscriptionId: s.id };
@@ -110,7 +116,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally { setLoading(false); }
   }, [user]);
 
-  // ✅ SAFE calculations
   const monthly = useMemo(() => subscriptions.filter(s => s.active).reduce((sum, s) => sum + (s.cost || 0), 0), [subscriptions]);
   const annual = useMemo(() => subscriptions.filter(s => s.active).reduce((sum, s) => sum + (s.cost || 0) * 12, 0), [subscriptions]);
   const activeCount = useMemo(() => subscriptions.filter((s) => s.active).length, [subscriptions]);
@@ -132,7 +137,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     });
   }, [monthly]);
 
-  // ✅ Complete CRUD Functions
   const addSubscription = async (sub: Omit<Subscription, 'id' | 'user_id'>) => {
     if (!user) throw new Error('User not authenticated');
     const dbSub = { name: sub.name, price: sub.cost, currency: sub.currency, billing_cycle: sub.billingCycle, next_renewal: sub.nextRenewalDate, category: sub.category, active: sub.active, shared_with: sub.shared ? [user.id] : [], family_member_ids: sub.familyMemberIds || [], price_history: sub.priceHistory || [], user_id: user.id };

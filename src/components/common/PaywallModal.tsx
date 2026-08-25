@@ -28,13 +28,9 @@ export function PaywallModal() {
     }, 1200);
   };
 
-  // 100% Inline Styles (Koi bhi global CSS isko override nahi kar sakti)
-  const whiteText = { color: '#ffffff', opacity: 1, textShadow: 'none' };
-  const grayText = { color: '#9ca3af', opacity: 1, textShadow: 'none' };
-
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.9)', opacity: 1 }}>
-      <div className="relative w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ backgroundColor: '#16181D', border: '1px solid rgba(255,255,255,0.1)', opacity: 1 }}>
+    <div className="fixed inset-0 z-[9999] paywall-modal-root flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.9)' }}>
+      <div className="relative w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col" style={{ backgroundColor: '#16181D', border: '1px solid rgba(255,255,255,0.1)' }}>
         
         {/* Header */}
         <div className="p-6 border-b shrink-0" style={{ borderColor: 'rgba(255,255,255,0.1)', background: 'linear-gradient(to bottom, rgba(139, 92, 246, 0.3), transparent)' }}>
@@ -51,17 +47,17 @@ export function PaywallModal() {
               S
             </div>
             <div>
-              <h3 className="font-bold text-lg" style={whiteText}>SubTrack Pro</h3>
-              <p className="text-xs" style={grayText}>{profile.email || 'user@example.com'}</p>
+              <h3 className="font-bold text-lg" style={{ color: '#ffffff' }}>SubTrack Pro</h3>
+              <p className="text-xs" style={{ color: '#9ca3af' }}>{profile.email || 'user@example.com'}</p>
             </div>
             <div className="ml-auto text-right pr-4">
-              <span className="text-2xl font-black" style={whiteText}>$4.99</span>
-              <p className="text-[10px]" style={grayText}>/ month</p>
+              <span className="text-2xl font-black" style={{ color: '#ffffff' }}>$4.99</span>
+              <p className="text-[10px]" style={{ color: '#9ca3af' }}>/ month</p>
             </div>
           </div>
 
-          <p className="text-[11px] mt-3 flex items-center gap-1" style={grayText}>
-            <Lock className="w-3 h-3" style={{ color: '#34d399' }} /> International secure checkout
+          <p className="text-[11px] mt-3 flex items-center gap-1" style={{ color: '#9ca3af' }}>
+            <Lock className="w-3 h-3 text-emerald-400" /> International secure checkout
           </p>
         </div>
 
@@ -74,11 +70,11 @@ export function PaywallModal() {
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl border flex items-center justify-center" style={{ borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                <Smartphone className="w-5 h-5" style={whiteText} />
+                <Smartphone className="w-5 h-5" style={{ color: '#ffffff' }} />
               </div>
               <div>
-                <p className="text-sm font-bold" style={whiteText}>Express Checkout</p>
-                <p className="text-[11px]" style={grayText}>Apple Pay, Google Pay, Link</p>
+                <p className="text-sm font-bold" style={{ color: '#ffffff' }}>Express Checkout</p>
+                <p className="text-[11px]" style={{ color: '#9ca3af' }}>Apple Pay, Google Pay, Link</p>
               </div>
             </div>
             <input type="radio" checked={selectedMethod === 'express'} onChange={() => {}} style={{ accentColor: '#8b5cf6' }} />
@@ -94,8 +90,8 @@ export function PaywallModal() {
                 <CreditCard className="w-5 h-5" style={{ color: '#60a5fa' }} />
               </div>
               <div>
-                <p className="text-sm font-bold" style={whiteText}>Credit or Debit Card</p>
-                <p className="text-[11px]" style={grayText}>Visa, MasterCard, AMEX</p>
+                <p className="text-sm font-bold" style={{ color: '#ffffff' }}>Credit or Debit Card</p>
+                <p className="text-[11px]" style={{ color: '#9ca3af' }}>Visa, MasterCard, AMEX</p>
               </div>
             </div>
             <input type="radio" checked={selectedMethod === 'card'} onChange={() => {}} style={{ accentColor: '#8b5cf6' }} />
@@ -121,8 +117,8 @@ export function PaywallModal() {
                 <Gift className="w-5 h-5" style={{ color: '#fbbf24' }} />
               </div>
               <div>
-                <p className="text-sm font-bold" style={whiteText}>Redeem Promo Code</p>
-                <p className="text-[11px]" style={grayText}>Have a gift card or code?</p>
+                <p className="text-sm font-bold" style={{ color: '#ffffff' }}>Redeem Promo Code</p>
+                <p className="text-[11px]" style={{ color: '#9ca3af' }}>Have a gift card or code?</p>
               </div>
             </div>
             <input type="radio" checked={selectedMethod === 'redeem'} onChange={() => {}} style={{ accentColor: '#8b5cf6' }} />
@@ -139,7 +135,7 @@ export function PaywallModal() {
           >
             {isProcessing ? 'Processing...' : 'Subscribe for $4.99/mo'}
           </button>
-          <div className="flex items-center justify-center gap-1 mt-3 text-[10px]" style={grayText}>
+          <div className="flex items-center justify-center gap-1 mt-3 text-[10px]" style={{ color: '#9ca3af' }}>
             <ShieldCheck className="w-3.5 h-3.5" style={{ color: '#34d399' }} />
             <span>Encrypted SSL Secure</span>
           </div>
@@ -149,4 +145,3 @@ export function PaywallModal() {
     </div>
   );
 }
-<div className="fixed inset-0 z-[9999] paywall-modal-root flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.9)', opacity: 1 }}></div>

@@ -19,6 +19,7 @@ export interface Bill {
 interface BillsContextType {
   bills: Bill[];
   loading: boolean;
+  error: string | null;
   addBill: (bill: Omit<Bill, 'id' | 'user_id'>) => Promise<void>;
   updateBill: (id: string, updates: Partial<Bill>) => Promise<void>;
   deleteBill: (id: string) => Promise<void>;
@@ -32,6 +33,7 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { user } = useAuth();
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchBills = useCallback(async () => {
     if (!user) {
@@ -42,6 +44,8 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     try {
       setLoading(true);
+      setError(null);
+      
       const { data, error } = await supabase
         .from('bills')
         .select('*')
@@ -65,24 +69,20 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }));
 
       setBills(normalized);
-      localStorage.setItem('bills', JSON.stringify(normalized));
-    } catch (error) {
-      const localData = localStorage.getItem('bills');
-      if (localData) {
-        try { setBills(JSON.parse(localData)); } catch (e) { setBills([]); }
-      }
+    } catch (error: any) {
+      console.error('Error fetching bills:', error);
+      setError(error.message || 'Failed to fetch bills');
     } finally {
       setLoading(false);
     }
   }, [user]);
 
-  // ✅ Complete addBill with error handling
   const addBill = async (bill: Omit<Bill, 'id' | 'user_id'>) => {
     if (!user) throw new Error('User not authenticated');
     
     const dbBill = {
       name: bill.name,
-      provider: bill.provider,
+      provider: bill.provider || '',
       amount: bill.amount,
       currency: bill.currency,
       due_date: bill.dueDate,
@@ -111,15 +111,9 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           notes: data.notes,
           user_id: data.user_id,
         };
-        
-        setBills(prev => {
-          const newBills = [newBill, ...prev];
-          localStorage.setItem('bills', JSON.stringify(newBills));
-          return newBills;
-        });
+        setBills(prev => [newBill, ...prev]);
       }
     } catch (error) {
-      console.error('Add bill error:', error);
       throw error;
     }
   };
@@ -139,7 +133,6 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const { data, error } = await supabase.from('bills').update(dbUpdates).eq('id', id).eq('user_id', user?.id).select().single();
       if (error) throw error;
-
       if (data) {
         const updatedBill: Bill = {
           id: data.id,
@@ -155,7 +148,6 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           user_id: data.user_id,
         };
         setBills(prev => prev.map(b => (b.id === id ? updatedBill : b)));
-        localStorage.setItem('bills', JSON.stringify(bills.map(b => (b.id === id ? updatedBill : b))));
       }
     } catch (error) {
       throw error;
@@ -171,7 +163,6 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('bills').delete().eq('id', id).eq('user_id', user?.id);
       if (error) throw error;
       setBills(prev => prev.filter(b => b.id !== id));
-      localStorage.setItem('bills', JSON.stringify(bills.filter(b => b.id !== id)));
     } catch (error) {
       throw error;
     }
@@ -179,10 +170,10 @@ export const BillsProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     fetchBills();
-  }, [user, fetchBills]);
+  }, [fetchBills]);
 
   return (
-    <BillsContext.Provider value={{ bills, loading, addBill, updateBill, deleteBill, markAsPaid, fetchBills }}>
+    <BillsContext.Provider value={{ bills, loading, error, addBill, updateBill, deleteBill, markAsPaid, fetchBills }}>
       {children}
     </BillsContext.Provider>
   );
