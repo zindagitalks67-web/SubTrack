@@ -1,8 +1,16 @@
-import { useState } from 'react';
-import { Globe, User, ShieldCheck, Database, LogOut, Languages } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { 
+  Globe, User, ShieldCheck, Database, LogOut, Languages, 
+  Camera, Download, Moon, Sun 
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSubscriptions } from '@/context/SubscriptionContext';
+import { useBills } from '@/context/BillsContext';
+import { useFinance } from '@/context/FinanceContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { useTheme } from '@/context/ThemeContext';
+import { supabase } from '@/lib/supabase';
+import { exportToCSV } from '@/utils/exportData';
 import { Header } from '@/components/common/Header';
 import { GlassCard } from '@/components/common/GlassCard';
 import type { LanguageCode } from '@/utils/translations';
@@ -17,21 +25,6 @@ const CURRENCIES = [
   { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
   { code: 'CHF', symbol: 'Fr', name: 'Swiss Franc' },
   { code: 'CNY', symbol: '元', name: 'Chinese Yuan' },
-  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
-  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
-  { code: 'SAR', symbol: '﷼', name: 'Saudi Riyal' },
-  { code: 'BRL', symbol: 'R$', name: 'Brazilian Real' },
-  { code: 'MXN', symbol: 'MX$', name: 'Mexican Peso' },
-  { code: 'ZAR', symbol: 'R', name: 'South African Rand' },
-  { code: 'NZD', symbol: 'NZ$', name: 'New Zealand Dollar' },
-  { code: 'KRW', symbol: '₩', name: 'South Korean Won' },
-  { code: 'TRY', symbol: '₺', name: 'Turkish Lira' },
-  { code: 'RUB', symbol: '₽', name: 'Russian Ruble' },
-  { code: 'IDR', symbol: 'Rp', name: 'Indonesian Rupiah' },
-  { code: 'MYR', symbol: 'RM', name: 'Malaysian Ringgit' },
-  { code: 'PHP', symbol: '₱', name: 'Philippine Peso' },
-  { code: 'THB', symbol: '฿', name: 'Thai Baht' },
-  { code: 'NGN', symbol: '₦', name: 'Nigerian Naira' },
 ];
 
 const LANGUAGES: { code: LanguageCode; label: string }[] = [
@@ -50,81 +43,168 @@ const LANGUAGES: { code: LanguageCode; label: string }[] = [
 
 export function SettingsView() {
   const { user, isAdmin, signOut } = useAuth();
-  const { profile, updateProfile } = useSubscriptions();
-  const { lang, setLang, t } = useLanguage(); // ✅ t() use kiya
+  const { profile, updateProfile, subscriptions } = useSubscriptions();
+  const { bills } = useBills();
+  const { transactions } = useFinance();
+  const { lang, setLang, t } = useLanguage();
+  const { isDark, toggleTheme } = useTheme();
 
-  const handleCurrencyChange = async (newCurrency: string) => {
-    await updateProfile({ currency: newCurrency });
+  const [name, setName] = useState(profile.name);
+  const [currency, setCurrency] = useState(profile.currency);
+  const [reminderDays, setReminderDays] = useState(profile.reminderDays);
+  const [newPassword, setNewPassword] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Profile Photo Upload
+  const handleProfileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const fileName = `${user.id}-${Date.now()}.png`;
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file);
+
+    if (uploadError) {
+      alert('Upload failed: ' + uploadError.message);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    await supabase.auth.updateUser({
+      data: { avatar_url: urlData.publicUrl }
+    });
+
+    alert('Profile photo updated! Please refresh.');
+    window.location.reload();
   };
 
-  const handleLanguageChange = (newLang: LanguageCode) => {
-    setLang(newLang);
+  // Save Preferences
+  const handleSave = async () => {
+    try {
+      await updateProfile({ name, currency, reminderDays });
+      alert('Profile updated successfully!');
+    } catch (error) {
+      alert('Error saving profile. Please try again.');
+    }
+  };
+
+  // Password Change
+  const handlePasswordChange = async () => {
+    if (!newPassword) return alert('Enter a new password');
+    alert('Password change requested! (Implement in AuthContext)');
+    setNewPassword('');
+  };
+
+  // Export Data (CSV)
+  const handleExport = () => {
+    exportToCSV('My_Subscriptions', subscriptions);
+    exportToCSV('My_Bills', bills);
+    exportToCSV('My_Transactions', transactions);
+    alert('Data exported successfully!');
   };
 
   return (
     <div className="animate-fade-in space-y-4 max-w-2xl mx-auto">
-      {/* ✅ Translate Title & Subtitle */}
       <Header title={t('settings')} subtitle={t('manageAccount')} icon={User} />
 
+      {/* Profile Card with Photo Upload */}
       <GlassCard>
         <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
-            {profile.name.charAt(0).toUpperCase()}
-          </div>
+          {user?.user_metadata?.avatar_url ? (
+            <img src={user.user_metadata.avatar_url} className="w-16 h-16 rounded-2xl object-cover shadow-lg" />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-500 to-indigo-500 flex items-center justify-center text-2xl font-bold text-white shadow-lg">
+              {profile.name.charAt(0).toUpperCase()}
+            </div>
+          )}
           <div className="flex-1">
             <h3 className="font-semibold text-lg">{profile.name}</h3>
             <p className="text-xs text-content-secondary">{profile.email}</p>
           </div>
+          <button onClick={() => fileInputRef.current?.click()} className="p-2 bg-white/10 rounded-full hover:bg-white/20">
+            <Camera className="w-4 h-4" />
+          </button>
+          <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleProfileUpload} />
         </div>
       </GlassCard>
 
+      {/* Preferences Card */}
       <GlassCard>
         <h3 className="font-semibold text-content-primary text-sm mb-4 flex items-center gap-2">
-          <Globe className="w-4 h-4 text-brand-blue" /> {t('preferences')} {/* ✅ Translate */}
+          <Globe className="w-4 h-4 text-brand-blue" /> {t('preferences')}
         </h3>
         <div className="space-y-4">
           <label className="block">
+            <span className="text-xs font-medium text-content-secondary mb-1.5 block">{t('fullName')}</span>
+            <input className="glass-input w-full px-3.5 py-3 text-base" value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="block">
             <span className="text-xs font-medium text-content-secondary mb-1.5 block">{t('currency')}</span>
-            <select className="glass-input w-full px-3.5 py-3 text-base" value={profile.currency} onChange={(e) => handleCurrencyChange(e.target.value)}>
+            <select className="glass-input w-full px-3.5 py-3 text-base" value={currency} onChange={(e) => setCurrency(e.target.value)}>
               {CURRENCIES.map((c) => <option key={c.code} value={c.code}>{c.symbol} {c.code} - {c.name}</option>)}
             </select>
           </label>
-
           <label className="block">
             <span className="text-xs font-medium text-content-secondary mb-1.5 block flex items-center gap-1">
               <Languages className="w-3 h-3" /> {t('language')}
             </span>
-            <select className="glass-input w-full px-3.5 py-3 text-base" value={lang} onChange={(e) => handleLanguageChange(e.target.value as LanguageCode)}>
+            <select className="glass-input w-full px-3.5 py-3 text-base" value={lang} onChange={(e) => setLang(e.target.value as LanguageCode)}>
               {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
             </select>
           </label>
+          <button onClick={handleSave} className="btn-primary w-full py-3">{t('saveChanges')}</button>
         </div>
       </GlassCard>
 
+      {/* Security Card */}
       <GlassCard>
         <h3 className="font-semibold text-content-primary text-sm mb-4 flex items-center gap-2">
-          <LogOut className="w-4 h-4 text-danger" /> {t('security')} {/* ✅ Translate */}
+          <ShieldCheck className="w-4 h-4 text-danger" /> {t('security')}
         </h3>
-        <div className="flex gap-2">
-          <input type="password" className="glass-input flex-1 px-3.5 py-3 text-base" placeholder={t('newPassword')} />
-          <button className="btn-ghost px-4 text-sm">{t('update')}</button>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <input type="password" className="glass-input flex-1 px-3.5 py-3 text-base" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder={t('newPassword')} />
+            <button onClick={handlePasswordChange} className="btn-ghost px-4 text-sm">{t('update')}</button>
+          </div>
         </div>
       </GlassCard>
 
+      {/* Dark Mode Toggle */}
+      <button onClick={toggleTheme} className="btn-ghost w-full py-3 text-sm flex items-center justify-center gap-2">
+        {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        {isDark ? 'Light Mode' : 'Dark Mode'}
+      </button>
+
+      {/* Export Data */}
+      <button onClick={handleExport} className="btn-ghost w-full py-3 text-sm flex items-center justify-center gap-2">
+        <Download className="w-4 h-4" /> Export Data (CSV)
+      </button>
+
+      {/* Admin Panel */}
       {isAdmin && (
         <GlassCard className="border-danger/30 bg-danger/5">
           <h3 className="font-semibold text-danger text-sm mb-2 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4" /> {t('adminPanel')} {/* ✅ Translate */}
+            <ShieldCheck className="w-4 h-4" /> {t('adminPanel')}
           </h3>
+          <p className="text-xs text-content-secondary mb-3">You are logged in as an Administrator.</p>
           <div className="grid grid-cols-2 gap-2">
-            <button className="btn-ghost text-sm"><Database className="w-4 h-4" /> {t('viewUsers')}</button>
-            <button className="btn-ghost text-sm"><Database className="w-4 h-4" /> {t('manageData')}</button>
+            <button onClick={() => alert('Admin: View All Users')} className="btn-ghost text-sm">
+              <Database className="w-4 h-4" /> {t('viewUsers')}
+            </button>
+            <button onClick={() => alert('Admin: Manage Data')} className="btn-ghost text-sm">
+              <Database className="w-4 h-4" /> {t('manageData')}
+            </button>
           </div>
         </GlassCard>
       )}
 
+      {/* Logout */}
       <button onClick={signOut} className="btn-ghost w-full py-3 text-danger flex items-center justify-center gap-2">
-        <LogOut className="w-4 h-4" /> {t('logout')} {/* ✅ Translate */}
+        <LogOut className="w-4 h-4" /> {t('logout')}
       </button>
     </div>
   );

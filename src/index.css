@@ -2,83 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Basic Theme */
 :root {
-  color-scheme: light !important;
+  color-scheme: light;
 }
-
 body {
   background-color: #f3f4f6 !important;
   color: #111827 !important;
 }
 
-/* ✅ GLOBAL FIX: Saare text ko dark black banao (except Paywall) */
-body h1, body h2, body h3, body h4, body h5, body h6, body p, body span, body label, body div {
-  color: #111827 !important;
+/* Dark Mode Overrides */
+.dark body {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+}
+.dark body h1, .dark body h2, .dark body h3, .dark body h4, .dark body h5, .dark body h6, 
+.dark body p, .dark body span, .dark body label, .dark body div {
+  color: #f9fafb !important;
 }
 
-.glass, .glass-card, .glass-nav {
-  background-color: #ffffff !important;
-  border-color: #e5e7eb !important;
-}
-
-input, select, textarea {
-  color: #000000 !important;
-  background-color: #ffffff !important;
-  -webkit-text-fill-color: #000000 !important;
-  border: 1px solid #e5e7eb !important;
-}
-
-input::placeholder {
-  color: #9ca3af !important;
-  -webkit-text-fill-color: #9ca3af !important;
-}
-
-.btn-primary {
-  background: linear-gradient(to right, #7c3aed, #4f46e5) !important;
-  color: white !important;
-}
-
-/* ---------- Premium UI Styles ---------- */
+/* Glass Cards */
 .glass-card {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
 }
-
-.glass-input {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  transition: all 0.3s ease;
-}
-.glass-input:focus {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
-  outline: none;
+.dark .glass-card {
+  background: #1f2937 !important;
+  border-color: #374151 !important;
 }
 
-.btn-primary {
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
-  border-radius: 16px;
-  box-shadow: 0 8px 25px -5px rgba(99, 102, 241, 0.4);
-  transition: all 0.3s ease;
+/* Input Fields */
+input, select, textarea {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #000000 !important;
+  border: 1px solid #e5e7eb !important;
 }
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px -5px rgba(99, 102, 241, 0.5);
+.dark input, .dark select, .dark textarea {
+  color: #ffffff !important;
+  background-color: #111827 !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border: 1px solid #4b5563 !important;
 }
 
-/* 🛑 PAYWALL SPECIFIC FIX: Sirf Paywall ke andar text white rahega */
-.paywall-modal-root,
-.paywall-modal-root h1,
-.paywall-modal-root h2,
-.paywall-modal-root h3,
-.paywall-modal-root p,
-.paywall-modal-root span,
-.paywall-modal-root label,
-.paywall-modal-root div {
+/* Paywall Fix (Override Global Rule) - Ye sabse important hai */
+.paywall-modal-root, 
+.paywall-modal-root h1, .paywall-modal-root h2, .paywall-modal-root h3, 
+.paywall-modal-root p, .paywall-modal-root span, .paywall-modal-root label, .paywall-modal-root div {
   color: #ffffff !important;
   text-shadow: none !important;
   filter: none !important;
   opacity: 1 !important;
+}
+
+/* Animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Buttons */
+.btn-primary {
+  background: linear-gradient(to right, #7c3aed, #4f46e5) !important;
+  color: white !important;
 }

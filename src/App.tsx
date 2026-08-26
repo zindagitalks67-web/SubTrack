@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { ToastProvider } from '@/context/ToastContext';
 import { LanguageProvider, useLanguage } from '@/context/LanguageContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { AdminProvider } from '@/context/AdminContext';
 import { AdminView } from '@/components/Admin/AdminView';
 import { BillsProvider } from '@/context/BillsContext';
@@ -29,6 +30,7 @@ import { SettingsView } from '@/settings/SettingsView';
 import { AnalyticsView } from '@/components/analytics/AnalyticsView';
 import { CalendarView } from '@/components/calendar/CalendarView';
 import { InsightsView } from '@/components/insights/InsightsView';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const getAlerts = (subscriptions: any[]): any[] => {
   const now = new Date();
@@ -55,12 +57,14 @@ function AppShell() {
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
-  const { subscriptions, addSubscription, updateSubscription } = useSubscriptions();
-  const { isAdmin } = useAuth(); 
-  
-  const alerts = getAlerts(subscriptions);
 
+  const { subscriptions, addSubscription, updateSubscription } = useSubscriptions();
+  const { isAdmin } = useAuth();
+
+  // ✅ Notifications Hook
+  useNotifications();
+
+  const alerts = getAlerts(subscriptions);
   const coreNavItems = getCoreNavItems(t);
   const navWithBadges: NavItem[] = coreNavItems.map((item) =>
     item.key === 'alerts' ? { ...item, badge: alerts.length } : item,
@@ -78,18 +82,20 @@ function AppShell() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top Bar with Menu Button */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200 p-4 flex items-center justify-between max-w-md mx-auto w-full">
-        <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-gray-100">
-          <Menu className="w-6 h-6 text-gray-700" />
+      {/* ✅ Top Bar with Dark Mode classes */}
+      <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between max-w-md mx-auto w-full">
+        <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
+          <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
         </button>
-        <h1 className="text-lg font-bold text-gray-800">SubTrack</h1>
+        <h1 className="text-lg font-bold text-gray-800 dark:text-white">SubTrack</h1>
         <div className="w-6" />
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 w-full max-w-md mx-auto px-4 pt-5 pb-28 safe-top">
-        {view === 'dashboard' && <DashboardView onNavigate={handleChange} onEditSubscription={openEditor} />}
+      {/* ✅ Main Content with Dark mode class and Animation */}
+      <main className="flex-1 w-full max-w-md mx-auto px-4 pt-5 pb-28 safe-top animate-fade-in">
+        {view === 'dashboard' && (
+          <DashboardView onNavigate={handleChange} onEditSubscription={openEditor} />
+        )}
         {view === 'subscriptions' && <SubscriptionsView />}
         {view === 'bills' && <BillsView />}
         {view === 'finance' && <FinanceView />}
@@ -104,18 +110,25 @@ function AppShell() {
         {view === 'admin' && isAdmin && <AdminView />}
       </main>
 
+      {/* Sidebar */}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} active={view} onChange={handleChange} />
+
+      {/* Bottom Nav */}
       <BottomNav items={navWithBadges} active={view} onChange={handleChange} />
+
       <PaywallModal />
       <ToastContainer />
-      
+
       {editOpen && (
         <SubscriptionForm
           initialData={editing}
           onClose={() => setEditOpen(false)}
           onSubmit={async (data) => {
-            if (editing) await updateSubscription(editing.id, data);
-            else await addSubscription(data);
+            if (editing) {
+              await updateSubscription(editing.id, data);
+            } else {
+              await addSubscription(data);
+            }
             setEditOpen(false);
           }}
         />
@@ -129,30 +142,46 @@ export default function App() {
   const [isLogin, setIsLogin] = useState(true);
 
   if (loading) {
-    return <div className="flex items-center justify-center min-h-screen bg-gray-100"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" /></div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600" />
+      </div>
+    );
   }
 
   if (!user) {
-    return isLogin ? <Login onToggle={() => setIsLogin(false)} /> : <Signup onToggle={() => setIsLogin(true)} />;
+    return isLogin ? (
+      <Login onToggle={() => setIsLogin(false)} />
+    ) : (
+      <Signup onToggle={() => setIsLogin(true)} />
+    );
   }
 
   return (
     <ToastProvider>
       <LanguageProvider>
-        <AdminProvider>
-          <BillsProvider>
-            <FinanceProvider>
-              <BudgetProvider>
-                <SubscriptionProvider>
-                  <div className="min-h-screen bg-gray-50">
-                    <button onClick={signOut} className="fixed bottom-20 right-4 z-50 bg-red-500 text-white px-3 py-1 rounded-full text-xs shadow-lg">Logout</button>
-                    <AppShell />
-                  </div>
-                </SubscriptionProvider>
-              </BudgetProvider>
-            </FinanceProvider>
-          </BillsProvider>
-        </AdminProvider>
+        <ThemeProvider>
+          <AdminProvider>
+            <BillsProvider>
+              <FinanceProvider>
+                <BudgetProvider>
+                  <SubscriptionProvider>
+                    {/* ✅ Root wrapper with Smooth Dark Mode transition */}
+                    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
+                      <button
+                        onClick={signOut}
+                        className="fixed bottom-20 right-4 z-50 bg-red-500 text-white px-3 py-1 rounded-full text-xs shadow-lg"
+                      >
+                        Logout
+                      </button>
+                      <AppShell />
+                    </div>
+                  </SubscriptionProvider>
+                </BudgetProvider>
+              </FinanceProvider>
+            </BillsProvider>
+          </AdminProvider>
+        </ThemeProvider>
       </LanguageProvider>
     </ToastProvider>
   );
