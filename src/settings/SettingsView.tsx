@@ -55,15 +55,14 @@ export function SettingsView() {
   const [newPassword, setNewPassword] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Profile Photo Upload
   const handleProfileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    const fileName = `${user.id}-${Date.now()}.png`;
+    const filePath = `${user.id}/${Date.now()}.png`;
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(fileName, file);
+      .upload(filePath, file, { upsert: true });
 
     if (uploadError) {
       alert('Upload failed: ' + uploadError.message);
@@ -72,7 +71,7 @@ export function SettingsView() {
 
     const { data: urlData } = supabase.storage
       .from('avatars')
-      .getPublicUrl(fileName);
+      .getPublicUrl(filePath);
 
     await supabase.auth.updateUser({
       data: { avatar_url: urlData.publicUrl }
@@ -82,7 +81,6 @@ export function SettingsView() {
     window.location.reload();
   };
 
-  // Save Preferences
   const handleSave = async () => {
     try {
       await updateProfile({ name, currency, reminderDays });
@@ -92,14 +90,12 @@ export function SettingsView() {
     }
   };
 
-  // Password Change
   const handlePasswordChange = async () => {
     if (!newPassword) return alert('Enter a new password');
-    alert('Password change requested! (Implement in AuthContext)');
+    alert('Password change requested!');
     setNewPassword('');
   };
 
-  // Export Data (CSV)
   const handleExport = () => {
     exportToCSV('My_Subscriptions', subscriptions);
     exportToCSV('My_Bills', bills);
@@ -111,7 +107,6 @@ export function SettingsView() {
     <div className="animate-fade-in space-y-4 max-w-2xl mx-auto">
       <Header title={t('settings')} subtitle={t('manageAccount')} icon={User} />
 
-      {/* Profile Card with Photo Upload */}
       <GlassCard>
         <div className="flex items-center gap-4 mb-4">
           {user?.user_metadata?.avatar_url ? (
@@ -132,7 +127,6 @@ export function SettingsView() {
         </div>
       </GlassCard>
 
-      {/* Preferences Card */}
       <GlassCard>
         <h3 className="font-semibold text-content-primary text-sm mb-4 flex items-center gap-2">
           <Globe className="w-4 h-4 text-brand-blue" /> {t('preferences')}
@@ -160,7 +154,6 @@ export function SettingsView() {
         </div>
       </GlassCard>
 
-      {/* Security Card */}
       <GlassCard>
         <h3 className="font-semibold text-content-primary text-sm mb-4 flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-danger" /> {t('security')}
@@ -173,18 +166,15 @@ export function SettingsView() {
         </div>
       </GlassCard>
 
-      {/* Dark Mode Toggle */}
       <button onClick={toggleTheme} className="btn-ghost w-full py-3 text-sm flex items-center justify-center gap-2">
         {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         {isDark ? 'Light Mode' : 'Dark Mode'}
       </button>
 
-      {/* Export Data */}
       <button onClick={handleExport} className="btn-ghost w-full py-3 text-sm flex items-center justify-center gap-2">
         <Download className="w-4 h-4" /> Export Data (CSV)
       </button>
 
-      {/* Admin Panel */}
       {isAdmin && (
         <GlassCard className="border-danger/30 bg-danger/5">
           <h3 className="font-semibold text-danger text-sm mb-2 flex items-center gap-2">
@@ -202,7 +192,6 @@ export function SettingsView() {
         </GlassCard>
       )}
 
-      {/* Logout */}
       <button onClick={signOut} className="btn-ghost w-full py-3 text-danger flex items-center justify-center gap-2">
         <LogOut className="w-4 h-4" /> {t('logout')}
       </button>
