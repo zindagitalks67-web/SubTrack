@@ -13,88 +13,54 @@ import { daysUntil, formatDateShort, getNextRenewalDate } from '@/utils/dateHelp
 import { sharedSplit } from '@/utils/calculations';
 import { fetchLiveExchangeRates, formatCurrency, type CurrencyCode } from '@/utils/currency';
 
-interface DashboardViewProps {
-  onNavigate: (v: ViewKey) => void;
-  onEditSubscription: (s: Subscription) => void;
-}
+interface DashboardViewProps { onNavigate: (v: ViewKey) => void; onEditSubscription: (s: Subscription) => void; }
 
 export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewProps) {
   const { t } = useLanguage();
-  const { monthly, annual, categories, forecast, activeCount, sharedCount, hikesCount, subscriptions, profile, updateSubscription } = useSubscriptions();
-
+  const { monthly, annual, categories, forecast, activeCount, sharedCount, hikesCount, subscriptions, profile, updateSubscription, fetchProfile } = useSubscriptions();
   const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
 
-  useEffect(() => {
-    fetchLiveExchangeRates().then((rates) => { if (rates) setLiveRates(rates); });
-  }, []);
+  useEffect(() => { fetchProfile(); }, [fetchProfile]);
+  useEffect(() => { fetchLiveExchangeRates().then((rates) => { if (rates) setLiveRates(rates); }); }, []);
 
   const targetCurrency = (profile.currency as CurrencyCode) || 'USD';
+  const tier = profile.tier || 'free';
+  const tierLabel = TIER_LABELS[tier as keyof typeof TIER_LABELS] || 'Free';
+  const planLabel = profile.plan ? profile.plan.charAt(0).toUpperCase() + profile.plan.slice(1) : 'Free';
 
   const urgentRenewals = useMemo(() => {
     const reminderDays = profile.reminderDays || 3;
-    return subscriptions
-      .filter((s) => s.active && s.nextRenewalDate)
-      .map((s) => ({ s, days: daysUntil(s.nextRenewalDate!) }))
-      .filter((item) => item.days <= reminderDays)
-      .sort((a, b) => a.days - b.days);
+    return subscriptions.filter((s) => s.active && s.nextRenewalDate).map((s) => ({ s, days: daysUntil(s.nextRenewalDate!) })).filter((item) => item.days <= reminderDays).sort((a, b) => a.days - b.days);
   }, [subscriptions, profile.reminderDays]);
 
-  const upcoming = useMemo(
-    () => subscriptions.filter((s) => s.active && s.nextRenewalDate)
-      .sort((a, b) => new Date(a.nextRenewalDate!).getTime() - new Date(b.nextRenewalDate!).getTime())
-      .slice(0, 4),
-    [subscriptions]
-  );
-
+  const upcoming = useMemo(() => subscriptions.filter((s) => s.active && s.nextRenewalDate).sort((a, b) => new Date(a.nextRenewalDate!).getTime() - new Date(b.nextRenewalDate!).getTime()).slice(0, 4), [subscriptions]);
   const topHike = useMemo(() => {
     let best: { s: Subscription; pct: number } | null = null;
-    for (const s of subscriptions) {
-      if (s.priceHistory.length === 0) continue;
-      const last = s.priceHistory[s.priceHistory.length - 1];
-      const pct = ((last.newPrice - last.oldPrice) / last.oldPrice) * 100;
-      if (!best || pct > best.pct) best = { s, pct };
-    }
+    for (const s of subscriptions) { if (s.priceHistory.length === 0) continue; const last = s.priceHistory[s.priceHistory.length - 1]; const pct = ((last.newPrice - last.oldPrice) / last.oldPrice) * 100; if (!best || pct > best.pct) best = { s, pct }; }
     return best;
   }, [subscriptions]);
-
   const forecastMax = Math.max(...forecast.map((f) => f.amount), 1);
-  
   const yourShareMonthly = useMemo(() => subscriptions.filter((s) => s.active && s.shared).reduce((sum, s) => sum + sharedSplit(s as any).yourShare, 0), [subscriptions]);
-
-  const handleMarkPaid = (s: Subscription) => {
-    const nextDate = getNextRenewalDate(s.nextRenewalDate!, s.billingCycle);
-    updateSubscription(s.id, { ...s, nextRenewalDate: nextDate });
-  };
+  const handleMarkPaid = (s: Subscription) => { const nextDate = getNextRenewalDate(s.nextRenewalDate!, s.billingCycle); updateSubscription(s.id, { ...s, nextRenewalDate: nextDate }); };
 
   return (
     <div className="animate-fade-in space-y-4">
-      <Header
-        title={`Hi, ${profile.name.split(' ')[0]}`}
-        subtitle={`${TIER_LABELS[(profile.tier || 'free') as keyof typeof TIER_LABELS]} plan · ${activeCount} ${t('active')}`}
-        icon={Wallet}
-      />
+      <Header title={`Hi, ${profile.name.split(' ')[0]}`} subtitle={`${planLabel} plan · ${activeCount} ${t('active')}`} icon={Wallet} />
 
       {urgentRenewals.length > 0 && (
         <div className="relative overflow-hidden rounded-2xl p-4 bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-red-500/15 border border-amber-500/30">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-            <h3 className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
-              {t('upcoming')} ({urgentRenewals.length})
-            </h3>
+            <h3 className="text-xs font-semibold text-amber-300 uppercase tracking-wider">{t('upcoming')} ({urgentRenewals.length})</h3>
           </div>
           <div className="space-y-2">
             {urgentRenewals.map(({ s, days }) => (
               <div key={s.id} className="flex items-center justify-between gap-3 bg-black/20 p-2.5 rounded-xl border border-white/5">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-white truncate">{s.name}</p>
-                  <p className="text-[11px] text-amber-300/80">
-                    {formatCurrency(s.cost, targetCurrency, liveRates)} ·{' '}
-                    {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Due today' : `Due in ${days}d`}
-                  </p>
+                  <p className="text-[11px] text-amber-300/80">{formatCurrency(s.cost, targetCurrency, liveRates)} · {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Due today' : `Due in ${days}d`}</p>
                 </div>
-                <button onClick={() => handleMarkPaid(s)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg transition-all">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid
-                </button>
+                <button onClick={() => handleMarkPaid(s)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg transition-all"><CheckCircle2 className="w-3.5 h-3.5" /> Mark Paid</button>
               </div>
             ))}
           </div>
@@ -107,15 +73,9 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
           <p className="text-xs text-white/70 font-medium uppercase tracking-wide">{t('monthly')} {t('spent')}</p>
           <p className="text-4xl font-bold text-white mt-1">{formatCurrency(monthly, targetCurrency, liveRates)}</p>
           <div className="flex items-center gap-4 mt-3">
-            <div>
-              <p className="text-[11px] text-white/60">{t('yearly')}</p>
-              <p className="text-sm font-semibold text-white">{formatCurrency(annual, targetCurrency, liveRates)}</p>
-            </div>
+            <div><p className="text-[11px] text-white/60">{t('yearly')}</p><p className="text-sm font-semibold text-white">{formatCurrency(annual, targetCurrency, liveRates)}</p></div>
             <div className="h-8 w-px bg-white/20" />
-            <div>
-              <p className="text-[11px] text-white/60">{t('shared')}</p>
-              <p className="text-sm font-semibold text-white">{formatCurrency(yourShareMonthly, targetCurrency, liveRates)}</p>
-            </div>
+            <div><p className="text-[11px] text-white/60">{t('shared')}</p><p className="text-sm font-semibold text-white">{formatCurrency(yourShareMonthly, targetCurrency, liveRates)}</p></div>
           </div>
         </div>
       </div>
@@ -154,7 +114,6 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
       )}
 
       <GlassCard>
-        {/* ✅ FIX: t('forecast') ko hardcode kar diya */}
         <h3 className="font-semibold text-content-primary text-sm mb-3">6-Month Forecast</h3>
         <div className="flex items-end justify-between gap-2 h-32">
           {forecast.map((f, i) => (
@@ -203,9 +162,7 @@ export function DashboardView({ onNavigate, onEditSubscription }: DashboardViewP
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-semibold text-content-primary">{formatCurrency(s.cost, targetCurrency, liveRates)}</p>
-                  <p className={`text-[11px] ${urgent ? 'text-danger' : 'text-content-muted'}`}>
-                    {days === null ? 'No date' : days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'today' : `in ${days}d`}
-                  </p>
+                  <p className={`text-[11px] ${urgent ? 'text-danger' : 'text-content-muted'}`}>{days === null ? 'No date' : days < 0 ? `${Math.abs(days)}d ago` : days === 0 ? 'today' : `in ${days}d`}</p>
                 </div>
               </button>
             );

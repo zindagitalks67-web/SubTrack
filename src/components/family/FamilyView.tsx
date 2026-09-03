@@ -1,95 +1,96 @@
 import { useState } from 'react';
-import { Users, UserPlus, Trash2, Mail, Crown, Sparkles, Heart } from 'lucide-react';
+import { Users, UserPlus, Trash2, Mail, X } from 'lucide-react';
 import { useSubscriptions } from '@/context/SubscriptionContext';
 import { Header } from '@/components/common/Header';
 import { EmptyState } from '@/components/common/EmptyState';
 import { GlassCard } from '@/components/common/GlassCard';
-import { Modal } from '@/components/common/Modal';
-import { RELATIONSHIPS } from '@/utils/constants';
-import { formatCurrency, sharedSplit, normalizedMonthly } from '@/utils/calculations';
+import { useLanguage } from '@/context/LanguageContext';
 
 export function FamilyView() {
-  const { family, subscriptions, addFamilyMember, removeFamilyMember, paywall } = useSubscriptions();
-  const [addOpen, setAddOpen] = useState(false);
+  const { t } = useLanguage();
+  const { family, subscriptions, addFamilyMember, removeFamilyMember } = useSubscriptions();
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [relationship, setRelationship] = useState(RELATIONSHIPS[0]);
+  
+  const sharedSubs = subscriptions.filter(s => s.active && s.shared);
 
-  const safeFamily = family || [];
-  const safeSubs = subscriptions || [];
-
-  const sharedSubs = safeSubs.filter((s: any) => s.active && s.shared);
-  const memberShare = (memberId: string) => {
-    let total = 0;
-    for (const s of sharedSubs) {
-      if (s.familyMemberIds.includes(memberId)) total += sharedSplit(s as any).perMember;
-    }
-    return total;
+  const openAddModal = () => {
+    setName('');
+    setIsModalOpen(true);
   };
 
-  const handleSubmit = () => {
-    const ok = addFamilyMember({ name, email, relationship });
-    if (ok) {
-      setName('');
-      setEmail('');
-      setRelationship(RELATIONSHIPS[0]);
-      setAddOpen(false);
-    }
+  const handleAdd = () => {
+    if (!name.trim()) return;
+    addFamilyMember({ name, email: '', relationship: 'Family' });
+    setName('');
+    setIsModalOpen(false);
   };
-
-  const canShare = paywall?.isPaid || false;
 
   return (
     <div className="animate-fade-in space-y-4">
-      <Header title="Family" subtitle={`${safeFamily.length} members`} icon={Users} actions={
-        <button onClick={() => canShare ? setAddOpen(true) : paywall.open('family')} className="btn-primary px-3 py-2 text-sm">
-          <UserPlus className="w-4 h-4" /> Add Member
-        </button>
-      } />
+      <Header 
+        title={t('family')} 
+        subtitle={`${family.length} ${t('members')}`} 
+        icon={Users} 
+        actions={
+          <button onClick={openAddModal} className="btn-primary px-3 py-2 text-sm">
+            <UserPlus className="w-4 h-4" /> {t('addMember')}
+          </button>
+        }
+      />
 
-      {/* Summary */}
-      <div className="relative overflow-hidden rounded-3xl p-5 bg-brand-gradient-soft border border-white/10">
-        <p className="text-xs text-content-secondary">Shared subscriptions</p>
-        <p className="text-3xl font-bold text-content-primary mt-0.5">{sharedSubs.length}</p>
-        <p className="text-sm font-semibold text-content-primary mt-2">
-          {/* ✅ FIX: normalizedMonthly needs 2 arguments (cost and billingCycle) */}
-          {formatCurrency(sharedSubs.reduce((sum: number, s: any) => sum + normalizedMonthly(s.cost as any, s.billingCycle as any), 0))}/mo
-        </p>
-      </div>
+      <GlassCard className="p-5">
+        <p className="text-xs">{t('sharedSubs')}</p>
+        <p className="text-3xl font-bold mt-0.5">{sharedSubs.length}</p>
+        <p className="text-xs mt-2">${sharedSubs.reduce((sum, s) => sum + (s.cost || 0), 0).toFixed(2)}/mo</p>
+      </GlassCard>
 
-      {safeFamily.length === 0 ? (
-        <EmptyState icon={Users} title="No family members yet" description="Add members to share and split costs." />
+      {family.length === 0 ? (
+        <EmptyState icon={Users} title={t('noFamilyYet')} description={t('addMembersToShare')} />
       ) : (
-        <div className="space-y-3">
-          {safeFamily.map((m: any) => (
-            <GlassCard key={m.id}>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-semibold" style={{ backgroundColor: m.avatarColor }}>
-                  {m.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold">{m.name}</h3>
-                  {m.email && <p className="text-xs text-content-secondary">{m.email}</p>}
-                </div>
-                <button onClick={() => removeFamilyMember(m.id)} className="text-content-muted hover:text-danger p-2">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+        family.map(m => (
+          <GlassCard key={m.id}>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-semibold" style={{ backgroundColor: m.avatarColor }}>
+                {m.name.charAt(0).toUpperCase()}
               </div>
-            </GlassCard>
-          ))}
-        </div>
+              <div className="flex-1">
+                <p className="font-semibold">{m.name}</p>
+                {m.email && <p className="text-xs flex items-center gap-1"><Mail className="w-3 h-3" /> {m.email}</p>}
+              </div>
+              <button onClick={() => removeFamilyMember(m.id)} className="text-red-500 p-2">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </GlassCard>
+        ))
       )}
 
-      {addOpen && (
-        <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add member">
-          <div className="space-y-4">
-            <input className="glass-input w-full px-3.5 py-3" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-            <input className="glass-input w-full px-3.5 py-3" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            <button onClick={handleSubmit} className="btn-primary w-full py-3">
-              <Heart className="w-4 h-4" /> Save
-            </button>
+      {/* ✅ Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl w-full max-w-sm shadow-2xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">Add Member</h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <input
+              autoFocus
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+              placeholder="Member ka naam..."
+              className="w-full px-3 py-2 border rounded-lg mb-4"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setIsModalOpen(false)} className="flex-1 btn-ghost py-2">Cancel</button>
+              <button onClick={handleAdd} className="flex-1 btn-primary py-2">Add</button>
+            </div>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );

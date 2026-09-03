@@ -60,8 +60,6 @@ function AppShell() {
 
   const { subscriptions, addSubscription, updateSubscription } = useSubscriptions();
   const { isAdmin } = useAuth();
-
-  // ✅ Notifications Hook
   useNotifications();
 
   const alerts = getAlerts(subscriptions);
@@ -82,7 +80,6 @@ function AppShell() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* ✅ Top Bar with Dark Mode classes */}
       <div className="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between max-w-md mx-auto w-full">
         <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800">
           <Menu className="w-6 h-6 text-gray-700 dark:text-gray-300" />
@@ -91,11 +88,8 @@ function AppShell() {
         <div className="w-6" />
       </div>
 
-      {/* ✅ Main Content with Dark mode class and Animation */}
       <main className="flex-1 w-full max-w-md mx-auto px-4 pt-5 pb-28 safe-top animate-fade-in">
-        {view === 'dashboard' && (
-          <DashboardView onNavigate={handleChange} onEditSubscription={openEditor} />
-        )}
+        {view === 'dashboard' && <DashboardView onNavigate={handleChange} onEditSubscription={openEditor} />}
         {view === 'subscriptions' && <SubscriptionsView />}
         {view === 'bills' && <BillsView />}
         {view === 'finance' && <FinanceView />}
@@ -110,12 +104,8 @@ function AppShell() {
         {view === 'admin' && isAdmin && <AdminView />}
       </main>
 
-      {/* Sidebar */}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} active={view} onChange={handleChange} />
-
-      {/* Bottom Nav */}
       <BottomNav items={navWithBadges} active={view} onChange={handleChange} />
-
       <PaywallModal />
       <ToastContainer />
 
@@ -150,11 +140,7 @@ export default function App() {
   }
 
   if (!user) {
-    return isLogin ? (
-      <Login onToggle={() => setIsLogin(false)} />
-    ) : (
-      <Signup onToggle={() => setIsLogin(true)} />
-    );
+    return isLogin ? <Login onToggle={() => setIsLogin(false)} /> : <Signup onToggle={() => setIsLogin(true)} />;
   }
 
   return (
@@ -166,7 +152,6 @@ export default function App() {
               <FinanceProvider>
                 <BudgetProvider>
                   <SubscriptionProvider>
-                    {/* ✅ Root wrapper with Smooth Dark Mode transition */}
                     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors duration-300">
                       <button
                         onClick={signOut}
